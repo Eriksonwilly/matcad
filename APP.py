@@ -7,6 +7,7 @@ import plotly.graph_objects as go
 from math import sqrt
 from datetime import datetime
 import hashlib
+from fpdf import FPDF
 
 # Configuración de la página con diseño profesional
 st.set_page_config(
