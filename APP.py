@@ -22,6 +22,299 @@ except ImportError:
     PAYMENT_SYSTEM_AVAILABLE = False
     st.warning("⚠️ Sistema de pagos no disponible. Usando modo demo.")
 
+# ===== FUNCIONES DE CÁLCULO SEGÚN ACI 318-2025 =====
+
+def calcular_propiedades_concreto(fc):
+    """
+    Calcula propiedades del concreto según ACI 318-2025 - Capítulo 19
+    """
+    # Módulo de elasticidad (Ec)
+    Ec = 15000 * sqrt(fc)  # kg/cm²
+    
+    # Deformación última del concreto (εcu)
+    ecu = 0.003  # Para diseño por flexión
+    
+    # Resistencia a tracción por flexión (fr)
+    fr = 2 * sqrt(fc)  # kg/cm²
+    
+    # Factor β1 para bloque de compresión
+    if fc <= 280:
+        beta1 = 0.85
+    else:
+        beta1 = 0.85 - 0.05 * ((fc - 280) / 70)
+        beta1 = max(beta1, 0.65)  # Límite mínimo
+    
+    return {
+        'Ec': Ec,
+        'ecu': ecu,
+        'fr': fr,
+        'beta1': beta1
+    }
+
+def calcular_propiedades_acero(fy):
+    """
+    Calcula propiedades del acero según ACI 318-2025 - Capítulo 20
+    """
+    # Módulo de elasticidad del acero
+    Es = 2000000  # kg/cm²
+    
+    # Deformación de fluencia (εy)
+    ey = fy / Es
+    
+    return {
+        'Es': Es,
+        'ey': ey
+    }
+
+def calcular_cuantias_balanceada(fc, fy, beta1):
+    """
+    Calcula cuantía balanceada según ACI 318-2025 - Capítulo 9
+    """
+    # Cuantía balanceada (ρb)
+    rho_b = 0.85 * beta1 * (fc / fy) * (6000 / (6000 + fy))
+    
+    # Cuantía mínima (ρmin)
+    rho_min = max(0.8 * sqrt(fc) / fy, 14 / fy)
+    
+    # Cuantía máxima (ρmax) - Para evitar falla frágil
+    rho_max = 0.75 * rho_b
+    
+    # Cuantía máxima recomendada por McCormac para ductilidad
+    rho_max_mccormac = 0.025
+    
+    return {
+        'rho_b': rho_b,
+        'rho_min': rho_min,
+        'rho_max': rho_max,
+        'rho_max_mccormac': rho_max_mccormac
+    }
+
+def calcular_diseno_flexion(Mu, b, d, fc, fy, beta1):
+    """
+    Diseño por flexión según ACI 318-2025 - Capítulo 9
+    """
+    phi = 0.9  # Factor de reducción para flexión
+    
+    # Calcular cuantías
+    cuantias = calcular_cuantias_balanceada(fc, fy, beta1)
+    
+    # Iteración para As
+    a_estimado = d / 5
+    As_estimado = Mu / (phi * fy * (d - a_estimado/2))
+    
+    # Calcular a real
+    a_real = (As_estimado * fy) / (0.85 * fc * b)
+    
+    # As corregido
+    As_corregido = Mu / (phi * fy * (d - a_real/2))
+    
+    # Cuantía provista
+    rho_provisto = As_corregido / (b * d)
+    
+    # Verificar cuantías
+    cumple_cuantia_min = rho_provisto >= cuantias['rho_min']
+    cumple_cuantia_max = rho_provisto <= cuantias['rho_max']
+    cumple_mccormac = rho_provisto <= cuantias['rho_max_mccormac']
+    
+    # Momento resistente
+    Mn = As_corregido * fy * (d - a_real/2)
+    phiMn = phi * Mn
+    
+    return {
+        'As': As_corregido,
+        'a': a_real,
+        'rho_provisto': rho_provisto,
+        'cumple_cuantia_min': cumple_cuantia_min,
+        'cumple_cuantia_max': cumple_cuantia_max,
+        'cumple_mccormac': cumple_mccormac,
+        'Mn': Mn,
+        'phiMn': phiMn,
+        'cuantias': cuantias
+    }
+
+def calcular_diseno_cortante(Vu, b, d, fc, fy):
+    """
+    Diseño por cortante según ACI 318-2025 - Capítulo 22
+    """
+    phi_v = 0.75  # Factor de reducción para cortante
+    
+    # Resistencia del concreto (Vc)
+    Vc = 0.53 * sqrt(fc) * b * d
+    
+    # Cortante máximo que puede resistir el acero (Vs máx)
+    Vs_max = 2.1 * sqrt(fc) * b * d
+    
+    # Separación máxima de estribos
+    s_max = min(d/2, 60)  # cm
+    
+    # Si Vu > φVc, se requiere acero de cortante
+    requiere_acero = Vu > phi_v * Vc
+    
+    if requiere_acero:
+        # Cortante que debe resistir el acero
+        Vs_requerido = (Vu / phi_v) - Vc
+        
+        # Verificar límite superior
+        if Vs_requerido > Vs_max:
+            requiere_rediseno = True
+        else:
+            requiere_rediseno = False
+    else:
+        Vs_requerido = 0
+        requiere_rediseno = False
+    
+    return {
+        'Vc': Vc,
+        'Vs_max': Vs_max,
+        's_max': s_max,
+        'requiere_acero': requiere_acero,
+        'Vs_requerido': Vs_requerido,
+        'requiere_rediseno': requiere_rediseno,
+        'phi_v': phi_v
+    }
+
+def calcular_diseno_columna(Pu, fc, fy, Ag, Ast=0):
+    """
+    Diseño de columnas según ACI 318-2025 - Capítulo 10
+    """
+    phi_col = 0.65  # Factor de reducción para columnas con estribos
+    
+    # Cuantías mínimas y máximas
+    rho_min_col = 0.01  # 1%
+    rho_max_col = 0.06  # 6%
+    
+    # Área de acero mínima y máxima
+    As_min_col = rho_min_col * Ag
+    As_max_col = rho_max_col * Ag
+    
+    # Resistencia nominal (Pn)
+    Pn = 0.80 * (0.85 * fc * (Ag - Ast) + fy * Ast)
+    
+    # Resistencia de diseño
+    phiPn = phi_col * Pn
+    
+    # Verificar capacidad
+    cumple_capacidad = Pu <= phiPn
+    
+    return {
+        'Pn': Pn,
+        'phiPn': phiPn,
+        'As_min_col': As_min_col,
+        'As_max_col': As_max_col,
+        'cumple_capacidad': cumple_capacidad,
+        'phi_col': phi_col
+    }
+
+def calcular_diseno_losa(L, fy):
+    """
+    Diseño de losas según ACI 318-2025 - Capítulo 8 & E.060
+    """
+    # Espesor mínimo de losa aligerada
+    h_min = max(L / 25, 0.17)  # m, no menor a 17 cm
+    
+    # Refuerzo mínimo en losas
+    if fy == 4200:
+        rho_min_losa = 0.0018
+    else:
+        rho_min_losa = 0.8 * sqrt(210) / fy  # Aproximado
+    
+    # Separación máxima del acero
+    s_max_losa = min(3 * h_min * 100, 45)  # cm
+    
+    return {
+        'h_min': h_min,
+        'rho_min_losa': rho_min_losa,
+        's_max_losa': s_max_losa
+    }
+
+def calcular_analisis_sismico(P_edificio, num_pisos, h_piso, zona_sismica, tipo_suelo, 
+                            tipo_estructura, factor_importancia):
+    """
+    Análisis sísmico según E.030 & ACI 318-2025 - Capítulo 18
+    """
+    # Factores sísmicos
+    factores_Z = {"Z1": 0.10, "Z2": 0.20, "Z3": 0.30, "Z4": 0.45}
+    Z = factores_Z[zona_sismica]
+    
+    factores_R = {"Pórticos": 8.0, "Muros Estructurales": 6.0, "Dual": 7.0}
+    R = factores_R[tipo_estructura]
+    
+    factores_S = {"S1": 1.0, "S2": 1.2, "S3": 1.4, "S4": 1.6}
+    S = factores_S[tipo_suelo]
+    
+    # Período fundamental
+    T = 0.1 * num_pisos
+    
+    # Coeficiente de amplificación sísmica
+    if tipo_suelo == "S1":
+        C = 2.5 * (1.0/T)**0.8
+    else:
+        C = 2.5 * (1.0/T)
+    
+    # Cortante basal
+    V = (Z * factor_importancia * C * S * P_edificio) / R
+    
+    # Distribución de fuerzas
+    Fx = []
+    sum_h = sum([i*h_piso for i in range(1, num_pisos+1)])
+    for i in range(1, num_pisos+1):
+        Fx.append(V * (i*h_piso)/sum_h)
+    
+    # Deriva máxima permitida
+    deriva_max = 0.007 * h_piso  # Para edificios regulares
+    
+    return {
+        'T': T,
+        'C': C,
+        'V': V,
+        'Fx': Fx,
+        'deriva_max': deriva_max,
+        'Z': Z,
+        'R': R,
+        'S': S
+    }
+
+def calcular_predimensionamiento_completo(L_viga, num_pisos, num_vanos, CM, CV, fc, fy):
+    """
+    Predimensionamiento completo según E.060 Art. 10.2 y ACI 318-2025
+    """
+    # Propiedades del concreto
+    props_concreto = calcular_propiedades_concreto(fc)
+    
+    # Diseño de losa
+    diseno_losa = calcular_diseno_losa(L_viga, fy)
+    h_losa = diseno_losa['h_min']
+    
+    # Vigas
+    d_viga = L_viga * 100 / 10  # cm
+    b_viga = max(0.3 * d_viga, 25)  # cm
+    
+    # Columnas
+    P_servicio = num_pisos * (CM + 0.25*CV) * (L_viga*num_vanos)**2
+    P_mayorada = num_pisos * (1.2*CM + 1.6*CV) * (L_viga*num_vanos)**2
+    
+    # Área de columna por servicio
+    A_col_servicio = P_servicio / (0.45*fc)
+    
+    # Área de columna por resistencia
+    A_col_resistencia = P_mayorada / (0.65*0.8*fc)
+    
+    # Usar el mayor
+    A_columna = max(A_col_servicio, A_col_resistencia)
+    lado_columna = sqrt(A_columna)
+    
+    return {
+        'h_losa': h_losa,
+        'd_viga': d_viga,
+        'b_viga': b_viga,
+        'lado_columna': lado_columna,
+        'A_columna': A_columna,
+        'P_servicio': P_servicio,
+        'P_mayorada': P_mayorada,
+        'props_concreto': props_concreto,
+        'diseno_losa': diseno_losa
+    }
+
 # Configuración de la página
 st.set_page_config(
     page_title="CONSORCIO DEJ - Análisis Estructural Profesional",
@@ -520,56 +813,142 @@ def generar_pdf_profesional(datos_proyecto, resultados_analisis):
         story.append(columna_table)
         story.append(Spacer(1, 10))
         
-        # Sección de Parámetros Normativos en Español
-        story.append(Paragraph("PARÁMETROS NORMATIVOS - REFERENCIAS EN ESPAÑOL", heading_style))
+        # === PARÁMETROS NORMATIVOS SEGÚN ACI 318-2025 ===
+        st.markdown("""
+        <div class="section-header">
+            <h2>📋 PARÁMETROS NORMATIVOS - ACI 318-2025</h2>
+        </div>
+        """, unsafe_allow_html=True)
         
-        # Parámetros de vigas según normas
-        story.append(Paragraph("PARÁMETROS DE DISEÑO PARA VIGAS", ParagraphStyle(name='SubHeading', fontSize=10, textColor=colors.HexColor('#1e3c72'), spaceAfter=8)))
+        # Parámetros de vigas según ACI 318-2025
+        st.markdown("""
+        <div class="metric-card">
+            <h4>🏗️ PARÁMETROS DE DISEÑO PARA VIGAS (ACI 318-2025 - Capítulo 9)</h4>
+            <p><strong>Cuantía mínima ρmin:</strong> """ + f"{diseno_flexion['cuantias']['rho_min']:.4f}" + """ (ACI 9.6.1: ρmin ≥ 0.8√f'c/fy)</p>
+            <p><strong>Cuantía máxima ρmax:</strong> """ + f"{diseno_flexion['cuantias']['rho_max']:.4f}" + """ (ACI 9.3.3: ρmax ≤ 0.75ρb)</p>
+            <p><strong>Cuantía balanceada ρb:</strong> """ + f"{diseno_flexion['cuantias']['rho_b']:.4f}" + """ (ACI 9.3.3: ρb = 0.85β₁f'c/fy × 6000/(6000+fy))</p>
+            <p><strong>Cuantía provista ρ:</strong> """ + f"{rho_provisto:.4f}" + """ (ACI 9.3: Diseño por flexión)</p>
+            <p><strong>Factor de reducción φ:</strong> """ + f"{phi}" + """ (ACI 9.3: φ = 0.9 para flexión)</p>
+            <p><strong>Factor β₁:</strong> """ + f"{props_concreto['beta1']:.3f}" + """ (ACI 9.3.3: β₁ = 0.85 si f'c ≤ 280 kg/cm²)</p>
+        </div>
+        """, unsafe_allow_html=True)
         
-        parametros_vigas = [
-            ["Parámetro", "Valor", "Norma E.060", "Norma ACI 318-2025"],
-            ["Cuantía mínima ρmin", f"{resultados_analisis['rho_min_viga']:.4f}", "Art. 10.5.1: ρmin ≥ 0.8√f'c/fy", "Sección 9.6.1: ρmin ≥ 0.8√f'c/fy"],
-            ["Cuantía máxima ρmax", f"{resultados_analisis['rho_max_viga']:.4f}", "Art. 10.3.3: ρmax ≤ 0.025", "Sección 9.3.3: ρmax ≤ 0.025"],
-            ["Cuantía provista ρ", f"{resultados_analisis['rho_provisto']:.4f}", "Art. 10.3: Diseño por flexión", "Sección 9.3: Flexural design"],
-            ["Factor de reducción φ", f"{resultados_analisis['phi']}", "Art. 9.3.2: φ = 0.9 para flexión", "Sección 9.3: φ = 0.9 for flexure"]
-        ]
+        # Parámetros de columnas según ACI 318-2025
+        st.markdown("""
+        <div class="metric-card">
+            <h4>🏗️ PARÁMETROS DE DISEÑO PARA COLUMNAS (ACI 318-2025 - Capítulo 10)</h4>
+            <p><strong>Cuantía mínima ρmin:</strong> 0.01 (1%) (ACI 10.9.1: ρmin ≥ 0.01)</p>
+            <p><strong>Cuantía máxima ρmax:</strong> 0.06 (6%) (ACI 10.9.1: ρmax ≤ 0.06)</p>
+            <p><strong>Factor de reducción φ:</strong> """ + f"{phi_col}" + """ (ACI 10.3.6: φ = 0.65 para columnas con estribos)</p>
+            <p><strong>Resistencia nominal Pn:</strong> """ + f"{diseno_columna['Pn']/1000:.1f}" + """ ton (ACI 10.3.6: Pn = 0.80[0.85f'c(Ag-Ast)+fyAst])</p>
+            <p><strong>Resistencia de diseño φPn:</strong> """ + f"{diseno_columna['phiPn']/1000:.1f}" + """ ton</p>
+        </div>
+        """, unsafe_allow_html=True)
         
-        viga_parametros_table = Table(parametros_vigas, colWidths=[1.5*inch, 1*inch, 1.5*inch, 1.5*inch])
-        viga_parametros_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e3c72')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, -1), 8),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
-        ]))
-        story.append(viga_parametros_table)
-        story.append(Spacer(1, 8))
+        # Parámetros de cortante según ACI 318-2025
+        st.markdown("""
+        <div class="metric-card">
+            <h4>🔩 PARÁMETROS DE DISEÑO POR CORTANTE (ACI 318-2025 - Capítulo 22)</h4>
+            <p><strong>Resistencia del concreto Vc:</strong> """ + f"{V_c:.1f}" + """ kg (ACI 22.5.5.1: Vc = 0.53√f'c×b×d)</p>
+            <p><strong>Cortante máximo Vs:</strong> """ + f"{V_s_max:.1f}" + """ kg (ACI 22.5.1.2: Vs ≤ 2.1√f'c×b×d)</p>
+            <p><strong>Factor de reducción φ:</strong> """ + f"{diseno_cortante['phi_v']}" + """ (ACI 21.2.1: φ = 0.75 para cortante)</p>
+            <p><strong>Separación máxima:</strong> """ + f"{diseno_cortante['s_max']:.0f}" + """ cm (ACI 25.7.2.2: s ≤ d/2 o 60 cm)</p>
+            <p><strong>Requiere acero:</strong> """ + ('SÍ' if requiere_acero_cortante else 'NO') + """ (ACI 22.5.1.1: Si Vu > φVc)</p>
+        </div>
+        """, unsafe_allow_html=True)
         
-        # Parámetros de columnas según normas
-        story.append(Paragraph("PARÁMETROS DE DISEÑO PARA COLUMNAS", ParagraphStyle(name='SubHeading', fontSize=10, textColor=colors.HexColor('#1e3c72'), spaceAfter=8)))
+        # Propiedades de materiales según ACI 318-2025
+        st.markdown("""
+        <div class="metric-card">
+            <h4>🏗️ PROPIEDADES DE MATERIALES (ACI 318-2025)</h4>
+            <p><strong>Concreto - Módulo Ec:</strong> """ + f"{props_concreto['Ec']:.0f}" + """ kg/cm² (ACI 19.2.2.1: Ec = 15000√f'c)</p>
+            <p><strong>Concreto - Deformación εcu:</strong> """ + f"{props_concreto['ecu']}" + """ (ACI 22.2.2.1: εcu = 0.003)</p>
+            <p><strong>Concreto - Resistencia fr:</strong> """ + f"{props_concreto['fr']:.1f}" + """ kg/cm² (ACI 19.2.3.1: fr = 2√f'c)</p>
+            <p><strong>Acero - Módulo Es:</strong> """ + f"{props_acero['Es']:,}" + """ kg/cm² (ACI 20.2.2.1: Es = 2,000,000)</p>
+            <p><strong>Acero - Deformación εy:</strong> """ + f"{props_acero['ey']:.4f}" + """ (ACI 20.2.2.1: εy = fy/Es)</p>
+        </div>
+        """, unsafe_allow_html=True)
         
-        parametros_columnas = [
-            ["Parámetro", "Valor", "Norma E.060", "Norma ACI 318-2025"],
-            ["Cuantía mínima ρmin", "0.01 (1%)", "Art. 10.9.1: ρmin ≥ 0.01", "Sección 9.6.1: ρmin ≥ 0.01"],
-            ["Cuantía máxima ρmax", "0.06 (6%)", "Art. 10.9.1: ρmax ≤ 0.06", "Sección 9.6.1: ρmax ≤ 0.06"],
-            ["Factor de reducción φ", f"{resultados_analisis['phi_col']}", "Art. 9.3.2: φ = 0.65 para compresión", "Sección 9.3: φ = 0.65 for compression"],
-            ["Resistencia nominal Pn", f"{resultados_analisis['P_u']/resultados_analisis['phi_col']:.1f} ton", "Art. 10.3.6: Pn = Pu/φ", "Sección 9.3.2: Pn = Pu/φ"]
-        ]
-        
-        columna_parametros_table = Table(parametros_columnas, colWidths=[1.5*inch, 1*inch, 1.5*inch, 1.5*inch])
-        columna_parametros_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e3c72')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, -1), 8),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
-        ]))
-        story.append(columna_parametros_table)
-        story.append(Spacer(1, 10))
+        # Botón para mostrar fórmulas detalladas
+        if st.button("📚 VER FÓRMULAS DETALLADAS ACI 318-2025", type="secondary", use_container_width=True):
+            st.markdown("""
+            <div class="section-header">
+                <h3>📚 FÓRMULAS DETALLADAS ACI 318-2025</h3>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Fórmulas de propiedades de materiales
+            st.markdown("""
+            <div class="metric-card">
+                <h4>🏗️ PROPIEDADES DEL CONCRETO (ACI 318-2025 - Capítulo 19)</h4>
+                <p><strong>Resistencia a compresión (f'c):</strong> """ + f"{f_c}" + """ kg/cm²</p>
+                <p><strong>Módulo de elasticidad (Ec):</strong> Ec = 15000√f'c = """ + f"{props_concreto['Ec']:.0f}" + """ kg/cm²</p>
+                <p><strong>Deformación última (εcu):</strong> εcu = 0.003 (Para diseño por flexión)</p>
+                <p><strong>Resistencia a tracción (fr):</strong> fr = 2√f'c = """ + f"{props_concreto['fr']:.1f}" + """ kg/cm²</p>
+                <p><strong>Factor β₁:</strong> β₁ = 0.85 si f'c ≤ 280 kg/cm² = """ + f"{props_concreto['beta1']:.3f}" + """</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Fórmulas de propiedades del acero
+            st.markdown("""
+            <div class="metric-card">
+                <h4>🔩 PROPIEDADES DEL ACERO (ACI 318-2025 - Capítulo 20)</h4>
+                <p><strong>Esfuerzo de fluencia (fy):</strong> """ + f"{f_y}" + """ kg/cm²</p>
+                <p><strong>Módulo de elasticidad (Es):</strong> Es = 2,000,000 kg/cm²</p>
+                <p><strong>Deformación de fluencia (εy):</strong> εy = fy/Es = """ + f"{props_acero['ey']:.4f}" + """</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Fórmulas de diseño por flexión
+            st.markdown("""
+            <div class="metric-card">
+                <h4>🏗️ DISEÑO POR FLEXIÓN (ACI 318-2025 - Capítulo 9)</h4>
+                <p><strong>Momento último (Mu):</strong> Mu = 1.2MD + 1.6ML = """ + f"{M_u/100:.1f}" + """ kgf·m</p>
+                <p><strong>Cuantía balanceada (ρb):</strong> ρb = 0.85β₁(f'c/fy)(6000/(6000+fy)) = """ + f"{diseno_flexion['cuantias']['rho_b']:.4f}" + """</p>
+                <p><strong>Cuantía mínima (ρmin):</strong> ρmin = max(0.8√f'c/fy, 14/fy) = """ + f"{diseno_flexion['cuantias']['rho_min']:.4f}" + """</p>
+                <p><strong>Cuantía máxima (ρmax):</strong> ρmax = 0.75ρb = """ + f"{diseno_flexion['cuantias']['rho_max']:.4f}" + """</p>
+                <p><strong>Cuantía provista (ρ):</strong> ρ = As/(b×d) = """ + f"{rho_provisto:.4f}" + """</p>
+                <p><strong>Profundidad del bloque (a):</strong> a = As×fy/(0.85×f'c×b) = """ + f"{diseno_flexion['a']:.1f}" + """ cm</p>
+                <p><strong>Momento resistente (φMn):</strong> φMn = φ×As×fy×(d-a/2) = """ + f"{diseno_flexion['phiMn']/100:.1f}" + """ kgf·m</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Fórmulas de diseño por cortante
+            st.markdown("""
+            <div class="metric-card">
+                <h4>🔩 DISEÑO POR CORTANTE (ACI 318-2025 - Capítulo 22)</h4>
+                <p><strong>Cortante último (Vu):</strong> Vu = 1.2VD + 1.6VL = """ + f"{V_u:.1f}" + """ kg</p>
+                <p><strong>Resistencia del concreto (Vc):</strong> Vc = 0.53√f'c×b×d = """ + f"{V_c:.1f}" + """ kg</p>
+                <p><strong>Cortante máximo (Vs máx):</strong> Vs ≤ 2.1√f'c×b×d = """ + f"{V_s_max:.1f}" + """ kg</p>
+                <p><strong>Separación máxima:</strong> s ≤ d/2 o 60 cm = """ + f"{diseno_cortante['s_max']:.0f}" + """ cm</p>
+                <p><strong>Requiere acero:</strong> """ + ('SÍ' if requiere_acero_cortante else 'NO') + """ (Si Vu > φVc)</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Fórmulas de diseño de columnas
+            st.markdown("""
+            <div class="metric-card">
+                <h4>🏗️ DISEÑO DE COLUMNAS (ACI 318-2025 - Capítulo 10)</h4>
+                <p><strong>Carga axial última (Pu):</strong> Pu = 1.2PD + 1.6PL = """ + f"{P_u/1000:.1f}" + """ ton</p>
+                <p><strong>Resistencia nominal (Pn):</strong> Pn = 0.80[0.85f'c(Ag-Ast)+fyAst] = """ + f"{diseno_columna['Pn']/1000:.1f}" + """ ton</p>
+                <p><strong>Resistencia de diseño (φPn):</strong> φPn = φ×Pn = """ + f"{diseno_columna['phiPn']/1000:.1f}" + """ ton</p>
+                <p><strong>Refuerzo mínimo:</strong> As ≥ 0.01×Ag = """ + f"{As_min:.1f}" + """ cm² (1%)</p>
+                <p><strong>Refuerzo máximo:</strong> As ≤ 0.06×Ag = """ + f"{As_max:.1f}" + """ cm² (6%)</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Fórmulas de análisis sísmico
+            st.markdown("""
+            <div class="metric-card">
+                <h4>🌎 ANÁLISIS SÍSMICO (E.030 & ACI 318-2025 - Capítulo 18)</h4>
+                <p><strong>Cortante basal (V):</strong> V = Z×U×C×S×P/R = """ + f"{V/1000:.1f}" + """ ton</p>
+                <p><strong>Período fundamental (T):</strong> T = 0.1×N = """ + f"{T:.2f}" + """ s</p>
+                <p><strong>Coeficiente sísmico (C):</strong> C = 2.5×(1.0/T) = """ + f"{C:.3f}" + """</p>
+                <p><strong>Deriva máxima:</strong> Δmax = 0.007×h = """ + f"{deriva_max*100:.2f}" + """ %</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            st.success("✅ Fórmulas ACI 318-2025 mostradas correctamente")
         
         # Conclusiones con Referencias Normativas Específicas
         story.append(Paragraph("CONCLUSIONES Y RECOMENDACIONES CON REFERENCIAS NORMATIVAS", heading_style))
@@ -1120,58 +1499,100 @@ if st.session_state.authenticated:
                 factores_S = {"S1": 1.0, "S2": 1.2, "S3": 1.4, "S4": 1.6}
                 S = factores_S[tipo_suelo]
                 
-                # === PREDIMENSIONAMIENTO ===
+                # === PREDIMENSIONAMIENTO SEGÚN ACI 318-2025 ===
                 st.markdown("""
                 <div class="section-header">
-                    <h2>🔧 PREDIMENSIONAMIENTO ESTRUCTURAL</h2>
+                    <h2>🔧 PREDIMENSIONAMIENTO ESTRUCTURAL (ACI 318-2025)</h2>
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # Losas
-                h_losa = max(L_viga / 25, 0.17)
-                rho_min_losa = 0.0018
+                # Calcular propiedades de materiales
+                props_concreto = calcular_propiedades_concreto(f_c)
+                props_acero = calcular_propiedades_acero(f_y)
                 
-                # Vigas
-                d_viga = L_viga * 100 / 10
-                b_viga = max(0.3 * d_viga, 25)
-                rho_min_viga = max(0.8 * sqrt(f_c) / f_y, 14 / f_y)
-                rho_max_viga = 0.025
+                # Predimensionamiento completo
+                predim = calcular_predimensionamiento_completo(L_viga, num_pisos, num_vanos, CM, CV, f_c, f_y)
                 
-                # Columnas
-                P_servicio = num_pisos * (CM + 0.25*CV) * (L_viga*num_vanos)**2
-                P_mayorada = num_pisos * (1.2*CM + 1.6*CV) * (L_viga*num_vanos)**2
-                A_columna_servicio = P_servicio / (0.45*f_c)
-                A_columna_mayorada = P_mayorada / (0.65*0.8*f_c)
-                A_columna = max(A_columna_servicio, A_columna_mayorada)
-                lado_columna = sqrt(A_columna)
+                h_losa = predim['h_losa']
+                d_viga = predim['d_viga']
+                b_viga = predim['b_viga']
+                lado_columna = predim['lado_columna']
+                A_columna = predim['A_columna']
+                P_servicio = predim['P_servicio']
+                P_mayorada = predim['P_mayorada']
                 
-                # Mostrar predimensionamiento
-                col1, col2, col3 = st.columns(3)
+                # Propiedades de losa
+                rho_min_losa = predim['diseno_losa']['rho_min_losa']
+                s_max_losa = predim['diseno_losa']['s_max_losa']
+                
+                # Mostrar propiedades de materiales
+                st.markdown("""
+                <div class="section-header">
+                    <h3>🏗️ PROPIEDADES DE MATERIALES (ACI 318-2025)</h3>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                col1, col2 = st.columns(2)
                 
                 with col1:
                     st.markdown("""
                     <div class="metric-card">
-                        <h4>🏗️ Losas Aligeradas</h4>
-                        <p><strong>Espesor:</strong> """ + f"{h_losa*100:.0f}" + """ cm</p>
-                        <p><strong>ρ mín:</strong> """ + f"{rho_min_losa:.4f}" + """</p>
+                        <h4>🏗️ Concreto (Capítulo 19)</h4>
+                        <p><strong>f'c:</strong> """ + f"{f_c}" + """ kg/cm²</p>
+                        <p><strong>Ec:</strong> """ + f"{props_concreto['Ec']:.0f}" + """ kg/cm²</p>
+                        <p><strong>εcu:</strong> """ + f"{props_concreto['ecu']}" + """</p>
+                        <p><strong>fr:</strong> """ + f"{props_concreto['fr']:.1f}" + """ kg/cm²</p>
+                        <p><strong>β₁:</strong> """ + f"{props_concreto['beta1']:.3f}" + """</p>
                     </div>
                     """, unsafe_allow_html=True)
                 
                 with col2:
                     st.markdown("""
                     <div class="metric-card">
-                        <h4>🏗️ Vigas Principales</h4>
+                        <h4>🔩 Acero (Capítulo 20)</h4>
+                        <p><strong>fy:</strong> """ + f"{f_y}" + """ kg/cm²</p>
+                        <p><strong>Es:</strong> """ + f"{props_acero['Es']:,}" + """ kg/cm²</p>
+                        <p><strong>εy:</strong> """ + f"{props_acero['ey']:.4f}" + """</p>
+                        <p><strong>Módulo E:</strong> 2,000,000 kg/cm²</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                # Mostrar predimensionamiento
+                st.markdown("""
+                <div class="section-header">
+                    <h3>📐 DIMENSIONES PREDIMENSIONADAS</h3>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    st.markdown("""
+                    <div class="metric-card">
+                        <h4>🏗️ Losas Aligeradas (E.060 Art. 10.2)</h4>
+                        <p><strong>Espesor:</strong> """ + f"{h_losa*100:.0f}" + """ cm</p>
+                        <p><strong>ρ mín:</strong> """ + f"{rho_min_losa:.4f}" + """</p>
+                        <p><strong>s máx:</strong> """ + f"{s_max_losa:.0f}" + """ cm</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col2:
+                    st.markdown("""
+                    <div class="metric-card">
+                        <h4>🏗️ Vigas Principales (ACI 9.3)</h4>
                         <p><strong>Peralte:</strong> """ + f"{d_viga:.0f}" + """ cm</p>
                         <p><strong>Ancho:</strong> """ + f"{b_viga:.0f}" + """ cm</p>
+                        <p><strong>Relación:</strong> """ + f"{d_viga/b_viga:.1f}" + """</p>
                     </div>
                     """, unsafe_allow_html=True)
                 
                 with col3:
                     st.markdown("""
                     <div class="metric-card">
-                        <h4>🏗️ Columnas</h4>
+                        <h4>🏗️ Columnas (ACI 10.3)</h4>
                         <p><strong>Lado:</strong> """ + f"{lado_columna:.0f}" + """ cm</p>
                         <p><strong>Área:</strong> """ + f"{A_columna:.0f}" + """ cm²</p>
+                        <p><strong>P servicio:</strong> """ + f"{P_servicio/1000:.1f}" + """ ton</p>
                     </div>
                     """, unsafe_allow_html=True)
                 
@@ -1210,8 +1631,7 @@ if st.session_state.authenticated:
                         <p><strong>Período T:</strong> """ + f"{T:.2f}" + """ s</p>
                     </div>
                     """, unsafe_allow_html=True)
-                
-                with col2:
+                    
                     # Gráfico de fuerzas sísmicas
                     fig_sismo = go.Figure()
                     fig_sismo.add_trace(go.Bar(
@@ -1231,41 +1651,40 @@ if st.session_state.authenticated:
                     )
                     st.plotly_chart(fig_sismo, use_container_width=True)
                 
-                                # === DISEÑO ESTRUCTURAL CON REFERENCIAS NORMATIVAS ===
+                                # === DISEÑO ESTRUCTURAL SEGÚN ACI 318-2025 ===
                 st.markdown("""
                 <div class="section-header">
-                    <h2>🛠️ DISEÑO DE ELEMENTOS ESTRUCTURALES (E.060 & ACI 318-2025)</h2>
+                    <h2>🛠️ DISEÑO DE ELEMENTOS ESTRUCTURALES (ACI 318-2025)</h2>
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # Diseño de vigas
-                M_u = (1.2*CM + 1.6*CV) * L_viga**2 / 8 * 100
-                phi = 0.9  # Factor de reducción para flexión según E.060 Art. 9.3.2 / ACI 9.3
-                d_viga_cm = d_viga - 4
-
-                # Iteración para As
-                a_estimado = d_viga_cm / 5
-                A_s = M_u / (phi * f_y * (d_viga_cm - a_estimado/2))
-                a_real = (A_s * f_y) / (0.85 * f_c * b_viga)
-                A_s_corr = M_u / (phi * f_y * (d_viga_cm - a_real/2))
-
-                rho_provisto = A_s_corr / (b_viga * d_viga_cm)
-                cumple_cuantia = rho_min_viga <= rho_provisto <= rho_max_viga
-
+                # Diseño por flexión
+                M_u = (1.2*CM + 1.6*CV) * L_viga**2 / 8 * 100  # kgf·cm
+                d_viga_cm = d_viga - 4  # Peralte efectivo
+                
+                diseno_flexion = calcular_diseno_flexion(M_u, b_viga, d_viga_cm, f_c, f_y, props_concreto['beta1'])
+                
+                A_s_corr = diseno_flexion['As']
+                rho_provisto = diseno_flexion['rho_provisto']
+                cumple_cuantia = diseno_flexion['cumple_cuantia_min'] and diseno_flexion['cumple_cuantia_max']
+                phi = 0.9
+                
                 # Diseño por cortante
                 V_u = (1.2*CM + 1.6*CV) * L_viga / 2
-                phi_v = 0.75  # Factor de reducción para cortante según E.060 Art. 9.3.2 / ACI 9.3
-                V_c = 0.53 * sqrt(f_c) * b_viga * d_viga_cm
-                V_s_max = 2.1 * sqrt(f_c) * b_viga * d_viga_cm
+                diseno_cortante = calcular_diseno_cortante(V_u, b_viga, d_viga_cm, f_c, f_y)
+                
+                V_c = diseno_cortante['Vc']
+                V_s_max = diseno_cortante['Vs_max']
+                requiere_acero_cortante = diseno_cortante['requiere_acero']
                 
                 # Diseño de columnas
                 P_u = P_mayorada
-                phi_col = 0.65  # Factor de reducción para compresión según E.060 Art. 9.3.2 / ACI 9.3
-                A_g = lado_columna**2
-                As_min = 0.01 * A_g  # Cuantía mínima según E.060 Art. 10.9.1 / ACI 9.6.1
-                As_max = 0.06 * A_g  # Cuantía máxima según E.060 Art. 10.9.1 / ACI 9.6.1
-                Pn = P_u / phi_col
-                P0 = 0.85*f_c*(A_g - As_min) + f_y*As_min
+                diseno_columna = calcular_diseno_columna(P_u, f_c, f_y, A_columna)
+                
+                As_min = diseno_columna['As_min_col']
+                As_max = diseno_columna['As_max_col']
+                cumple_columna = diseno_columna['cumple_capacidad']
+                phi_col = diseno_columna['phi_col']
                 
                 # Mostrar resultados de diseño con referencias normativas
                 col1, col2 = st.columns(2)
@@ -1273,48 +1692,72 @@ if st.session_state.authenticated:
                 with col1:
                     st.markdown("""
                     <div class="metric-card">
-                        <h4>🏗️ Viga - Flexión (E.060 Art. 10.3 / ACI 9.3)</h4>
+                        <h4>🏗️ Viga - Flexión (ACI 318-2025 - Capítulo 9)</h4>
                         <p><strong>Mu:</strong> """ + f"{M_u/100:.1f}" + """ kgf·m</p>
                         <p><strong>As:</strong> """ + f"{A_s_corr:.2f}" + """ cm²</p>
                         <p><strong>ρ:</strong> """ + f"{rho_provisto:.4f}" + """</p>
-                        <p><strong>φ:</strong> """ + f"{phi}" + """ (E.060 Art. 9.3.2 / ACI 9.3)</p>
+                        <p><strong>φ:</strong> """ + f"{phi}" + """ (Factor de reducción)</p>
+                        <p><strong>β₁:</strong> """ + f"{props_concreto['beta1']:.3f}" + """</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Verificaciones de cuantías
+                    st.markdown("""
+                    <div class="metric-card">
+                        <h4>🔍 Verificaciones de Cuantías</h4>
+                        <p><strong>ρ mín:</strong> """ + f"{diseno_flexion['cuantias']['rho_min']:.4f}" + """ (ACI 9.6.1)</p>
+                        <p><strong>ρ máx:</strong> """ + f"{diseno_flexion['cuantias']['rho_max']:.4f}" + """ (ACI 9.3.3)</p>
+                        <p><strong>ρ McCormac:</strong> """ + f"{diseno_flexion['cuantias']['rho_max_mccormac']:.4f}" + """ (Ductilidad)</p>
+                        <p><strong>ρ provisto:</strong> """ + f"{rho_provisto:.4f}" + """</p>
                     </div>
                     """, unsafe_allow_html=True)
                     
                     if cumple_cuantia:
                         st.markdown("""
                         <div class="success-box">
-                            ✅ CUMPLE cuantías de acero (E.060 Art. 10.5.1 / ACI 9.6.1)
+                            ✅ CUMPLE cuantías de acero (ACI 318-2025 - Capítulos 9.3.3 & 9.6.1)
                         </div>
                         """, unsafe_allow_html=True)
                     else:
                         st.markdown("""
                         <div class="error-box">
-                            ⚠️ NO CUMPLE cuantías de acero (E.060 Art. 10.5.1 / ACI 9.6.1)
+                            ⚠️ NO CUMPLE cuantías de acero (ACI 318-2025 - Capítulos 9.3.3 & 9.6.1)
                         </div>
                         """, unsafe_allow_html=True)
                 
                 with col2:
                     st.markdown("""
                     <div class="metric-card">
-                        <h4>🏗️ Columna - Compresión (E.060 Art. 10.3.6 / ACI 9.3.2)</h4>
+                        <h4>🏗️ Columna - Compresión (ACI 318-2025 - Capítulo 10)</h4>
                         <p><strong>Pu:</strong> """ + f"{P_u/1000:.1f}" + """ ton</p>
                         <p><strong>As min:</strong> """ + f"{As_min:.1f}" + """ cm² (1%)</p>
                         <p><strong>As max:</strong> """ + f"{As_max:.1f}" + """ cm² (6%)</p>
-                        <p><strong>φ:</strong> """ + f"{phi_col}" + """ (E.060 Art. 9.3.2 / ACI 9.3)</p>
+                        <p><strong>φ:</strong> """ + f"{phi_col}" + """ (Factor de reducción)</p>
+                        <p><strong>Pn:</strong> """ + f"{diseno_columna['Pn']/1000:.1f}" + """ ton</p>
                     </div>
                     """, unsafe_allow_html=True)
                     
-                    if Pn <= P0:
+                    # Diseño por cortante
+                    st.markdown("""
+                    <div class="metric-card">
+                        <h4>🔩 Viga - Cortante (ACI 318-2025 - Capítulo 22)</h4>
+                        <p><strong>Vu:</strong> """ + f"{V_u:.1f}" + """ kg</p>
+                        <p><strong>Vc:</strong> """ + f"{V_c:.1f}" + """ kg</p>
+                        <p><strong>Vs máx:</strong> """ + f"{V_s_max:.1f}" + """ kg</p>
+                        <p><strong>φ:</strong> """ + f"{diseno_cortante['phi_v']}" + """ (Factor de reducción)</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    if cumple_columna:
                         st.markdown("""
                         <div class="success-box">
-                            ✅ Columna resiste la carga axial (E.060 Art. 10.3.6 / ACI 9.3.2)
+                            ✅ Columna resiste la carga axial (ACI 318-2025 - Capítulo 10.3.6)
                         </div>
                         """, unsafe_allow_html=True)
                     else:
                         st.markdown("""
                         <div class="error-box">
-                            ⚠️ Aumentar dimensiones de columna (E.060 Art. 10.3.6 / ACI 9.3.2)
+                            ⚠️ Aumentar dimensiones de columna (ACI 318-2025 - Capítulo 10.3.6)
                         </div>
                         """, unsafe_allow_html=True)
                 
@@ -1326,34 +1769,62 @@ if st.session_state.authenticated:
                 """, unsafe_allow_html=True)
                 
                 # Parámetros de vigas según normas
-                st.markdown("""
-                <div class="metric-card">
-                    <h4>🏗️ PARÁMETROS DE DISEÑO PARA VIGAS</h4>
-                    <p><strong>Cuantía mínima ρmin:</strong> """ + f"{rho_min_viga:.4f}" + """ (E.060 Art. 10.5.1 / ACI 9.6.1: ρmin ≥ 0.8√f'c/fy)</p>
-                    <p><strong>Cuantía máxima ρmax:</strong> """ + f"{rho_max_viga:.4f}" + """ (E.060 Art. 10.3.3 / ACI 9.3.3: ρmax ≤ 0.025)</p>
-                    <p><strong>Cuantía provista ρ:</strong> """ + f"{rho_provisto:.4f}" + """ (E.060 Art. 10.3 / ACI 9.3: Diseño por flexión)</p>
-                    <p><strong>Factor de reducción φ:</strong> """ + f"{phi}" + """ (E.060 Art. 9.3.2 / ACI 9.3: φ = 0.9 para flexión)</p>
-                </div>
-                """, unsafe_allow_html=True)
+                story.append(Paragraph("PARÁMETROS DE DISEÑO PARA VIGAS", ParagraphStyle(name='SubHeading', fontSize=10, textColor=colors.HexColor('#1e3c72'), spaceAfter=8)))
+                
+                parametros_vigas = [
+                    ["Parámetro", "Valor", "Norma E.060", "Norma ACI 318-2025"],
+                    ["Cuantía mínima ρmin", f"{resultados_analisis['rho_min_viga']:.4f}", "Art. 10.5.1: ρmin ≥ 0.8√f'c/fy", "Sección 9.6.1: ρmin ≥ 0.8√f'c/fy"],
+                    ["Cuantía máxima ρmax", f"{resultados_analisis['rho_max_viga']:.4f}", "Art. 10.3.3: ρmax ≤ 0.025", "Sección 9.3.3: ρmax ≤ 0.025"],
+                    ["Cuantía provista ρ", f"{resultados_analisis['rho_provisto']:.4f}", "Art. 10.3: Diseño por flexión", "Sección 9.3: Flexural design"],
+                    ["Factor de reducción φ", f"{resultados_analisis['phi']}", "Art. 9.3.2: φ = 0.9 para flexión", "Sección 9.3: φ = 0.9 for flexure"]
+                ]
+                
+                viga_parametros_table = Table(parametros_vigas, colWidths=[1.5*inch, 1*inch, 1.5*inch, 1.5*inch])
+                viga_parametros_table.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e3c72')),
+                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                    ('FONTSIZE', (0, 0), (-1, -1), 8),
+                    ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+                ]))
+                story.append(viga_parametros_table)
+                story.append(Spacer(1, 8))
                 
                 # Parámetros de columnas según normas
-                st.markdown("""
-                <div class="metric-card">
-                    <h4>🏗️ PARÁMETROS DE DISEÑO PARA COLUMNAS</h4>
-                    <p><strong>Cuantía mínima ρmin:</strong> 0.01 (1%) (E.060 Art. 10.9.1 / ACI 9.6.1: ρmin ≥ 0.01)</p>
-                    <p><strong>Cuantía máxima ρmax:</strong> 0.06 (6%) (E.060 Art. 10.9.1 / ACI 9.6.1: ρmax ≤ 0.06)</p>
-                    <p><strong>Factor de reducción φ:</strong> """ + f"{phi_col}" + """ (E.060 Art. 9.3.2 / ACI 9.3: φ = 0.65 para compresión)</p>
-                    <p><strong>Resistencia nominal Pn:</strong> """ + f"{P_u/phi_col/1000:.1f}" + """ ton (E.060 Art. 10.3.6 / ACI 9.3.2: Pn = Pu/φ)</p>
-                </div>
-                """, unsafe_allow_html=True)
+                story.append(Paragraph("PARÁMETROS DE DISEÑO PARA COLUMNAS", ParagraphStyle(name='SubHeading', fontSize=10, textColor=colors.HexColor('#1e3c72'), spaceAfter=8)))
+                
+                parametros_columnas = [
+                    ["Parámetro", "Valor", "Norma E.060", "Norma ACI 318-2025"],
+                    ["Cuantía mínima ρmin", "0.01 (1%)", "Art. 10.9.1: ρmin ≥ 0.01", "Sección 9.6.1: ρmin ≥ 0.01"],
+                    ["Cuantía máxima ρmax", "0.06 (6%)", "Art. 10.9.1: ρmax ≤ 0.06", "Sección 9.6.1: ρmax ≤ 0.06"],
+                    ["Factor de reducción φ", f"{resultados_analisis['phi_col']}", "Art. 9.3.2: φ = 0.65 para compresión", "Sección 9.3: φ = 0.65 for compression"],
+                    ["Resistencia nominal Pn", f"{resultados_analisis['P_u']/resultados_analisis['phi_col']:.1f} ton", "Art. 10.3.6: Pn = Pu/φ", "Sección 9.3.2: Pn = Pu/φ"]
+                ]
+                
+                columna_parametros_table = Table(parametros_columnas, colWidths=[1.5*inch, 1*inch, 1.5*inch, 1.5*inch])
+                columna_parametros_table.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e3c72')),
+                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                    ('FONTSIZE', (0, 0), (-1, -1), 8),
+                    ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+                ]))
+                story.append(columna_parametros_table)
+                story.append(Spacer(1, 10))
                 
                 # Verificaciones de estabilidad con referencias normativas
                 st.markdown("""
                 <div class="metric-card">
                     <h4>🔍 VERIFICACIONES DE ESTABILIDAD CON REFERENCIAS NORMATIVAS</h4>
-                    <p><strong>Vigas - Cuantía mínima:</strong> """ + ('✅ CUMPLE' if cumple_cuantia else '⚠️ NO CUMPLE') + """ (E.060 Art. 10.5.1 / ACI 9.6.1)</p>
-                    <p><strong>Vigas - Cuantía máxima:</strong> """ + ('✅ CUMPLE' if rho_provisto <= rho_max_viga else '⚠️ NO CUMPLE') + """ (E.060 Art. 10.3.3 / ACI 9.3.3)</p>
-                    <p><strong>Columnas - Resistencia axial:</strong> """ + ('✅ CUMPLE' if Pn <= P0 else '⚠️ NO CUMPLE') + """ (E.060 Art. 10.3.6 / ACI 9.3.2)</p>
+                    <p><strong>Vigas - Cuantía mínima:</strong> """ + ('✅ CUMPLE' if diseno_flexion['cumple_cuantia_min'] else '⚠️ NO CUMPLE') + """ (ACI 318-2025 - Capítulo 9.6.1)</p>
+                    <p><strong>Vigas - Cuantía máxima:</strong> """ + ('✅ CUMPLE' if diseno_flexion['cumple_cuantia_max'] else '⚠️ NO CUMPLE') + """ (ACI 318-2025 - Capítulo 9.3.3)</p>
+                    <p><strong>Vigas - Ductilidad McCormac:</strong> """ + ('✅ CUMPLE' if diseno_flexion['cumple_mccormac'] else '⚠️ NO CUMPLE') + """ (ρ ≤ 0.025 para ductilidad)</p>
+                    <p><strong>Columnas - Resistencia axial:</strong> """ + ('✅ CUMPLE' if cumple_columna else '⚠️ NO CUMPLE') + """ (ACI 318-2025 - Capítulo 10.3.6)</p>
+                    <p><strong>Cortante - Requiere acero:</strong> """ + ('✅ CUMPLE' if not requiere_acero_cortante else '⚠️ REQUIERE ESTRIBOS') + """ (ACI 318-2025 - Capítulo 22.5.1.1)</p>
                     <p><strong>Análisis sísmico:</strong> ✅ CUMPLE (E.030: Diseño Sismorresistente)</p>
                     <p><strong>Predimensionamiento:</strong> ✅ CUMPLE (E.060 Art. 10.2: Predimensionamiento)</p>
                 </div>
@@ -1690,15 +2161,17 @@ if st.session_state.authenticated:
                 # Conclusiones con referencias específicas
                 st.markdown("""
                 <div class="metric-card">
-                    <h4>✅ VERIFICACIONES CUMPLIDAS SEGÚN NORMATIVAS:</h4>
+                    <h4>✅ VERIFICACIONES CUMPLIDAS SEGÚN ACI 318-2025:</h4>
                     <p><strong>1. Predimensionamiento:</strong> ✅ CUMPLE (E.060 Art. 10.2: Predimensionamiento)</p>
                     <p><strong>2. Análisis sísmico:</strong> ✅ CUMPLE (E.030: Diseño Sismorresistente)</p>
                     <p><strong>3. Diseño estructural:</strong> ✅ CUMPLE (ACI 318-2025: Building Code Requirements)</p>
-                    <p><strong>4. Cuantías mínimas:</strong> """ + ('✅ CUMPLE' if cumple_cuantia else '⚠️ NO CUMPLE') + """ (E.060 Art. 10.5.1 / ACI 9.6.1)</p>
-                    <p><strong>5. Cuantías máximas:</strong> """ + ('✅ CUMPLE' if rho_provisto <= rho_max_viga else '⚠️ NO CUMPLE') + """ (E.060 Art. 10.3.3 / ACI 9.3.3)</p>
-                    <p><strong>6. Factores de reducción:</strong> ✅ CUMPLE (E.060 Art. 9.3.2 / ACI 9.3)</p>
-                    <p><strong>7. Vigas - Flexión:</strong> ✅ CUMPLE (E.060 Art. 10.3 / ACI 9.3)</p>
-                    <p><strong>8. Columnas - Compresión:</strong> """ + ('✅ CUMPLE' if Pn <= P0 else '⚠️ NO CUMPLE') + """ (E.060 Art. 10.3.6 / ACI 9.3.2)</p>
+                    <p><strong>4. Cuantías mínimas:</strong> """ + ('✅ CUMPLE' if diseno_flexion['cumple_cuantia_min'] else '⚠️ NO CUMPLE') + """ (ACI 318-2025 - Capítulo 9.6.1)</p>
+                    <p><strong>5. Cuantías máximas:</strong> """ + ('✅ CUMPLE' if diseno_flexion['cumple_cuantia_max'] else '⚠️ NO CUMPLE') + """ (ACI 318-2025 - Capítulo 9.3.3)</p>
+                    <p><strong>6. Ductilidad McCormac:</strong> """ + ('✅ CUMPLE' if diseno_flexion['cumple_mccormac'] else '⚠️ NO CUMPLE') + """ (ρ ≤ 0.025 para ductilidad)</p>
+                    <p><strong>7. Factores de reducción:</strong> ✅ CUMPLE (ACI 318-2025 - Capítulo 21.2.1)</p>
+                    <p><strong>8. Vigas - Flexión:</strong> ✅ CUMPLE (ACI 318-2025 - Capítulo 9.3)</p>
+                    <p><strong>9. Columnas - Compresión:</strong> """ + ('✅ CUMPLE' if cumple_columna else '⚠️ NO CUMPLE') + """ (ACI 318-2025 - Capítulo 10.3.6)</p>
+                    <p><strong>10. Cortante:</strong> """ + ('✅ CUMPLE' if not requiere_acero_cortante else '⚠️ REQUIERE ESTRIBOS') + """ (ACI 318-2025 - Capítulo 22.5.1.1)</p>
                 </div>
                 """, unsafe_allow_html=True)
                 
@@ -1720,10 +2193,13 @@ if st.session_state.authenticated:
                     <p>• Cortante basal y períodos fundamentales</p>
                     <br>
                     <p><strong>🇺🇸 ACI 318-2025 - Building Code Requirements:</strong></p>
-                    <p>• Sección 9.3: Flexural design (Diseño por flexión)</p>
-                    <p>• Sección 9.3.2: Compression design (Diseño por compresión)</p>
-                    <p>• Sección 9.6.1: Minimum reinforcement (Refuerzo mínimo)</p>
-                    <p>• Sección 9.3: Strength reduction factors (Factores de reducción)</p>
+                    <p>• Capítulo 9: Flexural design (Diseño por flexión)</p>
+                    <p>• Capítulo 10: Compression design (Diseño por compresión)</p>
+                    <p>• Capítulo 19: Concrete properties (Propiedades del concreto)</p>
+                    <p>• Capítulo 20: Steel properties (Propiedades del acero)</p>
+                    <p>• Capítulo 21: Strength reduction factors (Factores de reducción)</p>
+                    <p>• Capítulo 22: Shear design (Diseño por cortante)</p>
+                    <p>• Capítulo 25: Reinforcement details (Detalles de refuerzo)</p>
                 </div>
                 """, unsafe_allow_html=True)
                 
@@ -1731,13 +2207,17 @@ if st.session_state.authenticated:
                 st.markdown("""
                 <div class="metric-card">
                     <h4>🎯 RESUMEN FINAL - PARÁMETROS APLICADOS:</h4>
-                    <p><strong>Factor de reducción φ para flexión:</strong> """ + f"{phi}" + """ (E.060 Art. 9.3.2 / ACI 9.3)</p>
-                    <p><strong>Factor de reducción φ para compresión:</strong> """ + f"{phi_col}" + """ (E.060 Art. 9.3.2 / ACI 9.3)</p>
-                    <p><strong>Cuantía mínima vigas:</strong> """ + f"{rho_min_viga:.4f}" + """ (E.060 Art. 10.5.1 / ACI 9.6.1)</p>
-                    <p><strong>Cuantía máxima vigas:</strong> """ + f"{rho_max_viga:.4f}" + """ (E.060 Art. 10.3.3 / ACI 9.3.3)</p>
-                    <p><strong>Cuantía mínima columnas:</strong> 1% (E.060 Art. 10.9.1 / ACI 9.6.1)</p>
-                    <p><strong>Cuantía máxima columnas:</strong> 6% (E.060 Art. 10.9.1 / ACI 9.6.1)</p>
-                    <p><strong>Resistencia nominal columna:</strong> """ + f"{P_u/phi_col/1000:.1f}" + """ ton (E.060 Art. 10.3.6 / ACI 9.3.2)</p>
+                    <p><strong>Factor de reducción φ para flexión:</strong> """ + f"{phi}" + """ (ACI 318-2025 - Capítulo 21.2.1)</p>
+                    <p><strong>Factor de reducción φ para compresión:</strong> """ + f"{phi_col}" + """ (ACI 318-2025 - Capítulo 21.2.1)</p>
+                    <p><strong>Factor de reducción φ para cortante:</strong> """ + f"{diseno_cortante['phi_v']}" + """ (ACI 318-2025 - Capítulo 21.2.1)</p>
+                    <p><strong>Cuantía mínima vigas:</strong> """ + f"{diseno_flexion['cuantias']['rho_min']:.4f}" + """ (ACI 318-2025 - Capítulo 9.6.1)</p>
+                    <p><strong>Cuantía máxima vigas:</strong> """ + f"{diseno_flexion['cuantias']['rho_max']:.4f}" + """ (ACI 318-2025 - Capítulo 9.3.3)</p>
+                    <p><strong>Cuantía balanceada:</strong> """ + f"{diseno_flexion['cuantias']['rho_b']:.4f}" + """ (ACI 318-2025 - Capítulo 9.3.3)</p>
+                    <p><strong>Cuantía mínima columnas:</strong> 1% (ACI 318-2025 - Capítulo 10.9.1)</p>
+                    <p><strong>Cuantía máxima columnas:</strong> 6% (ACI 318-2025 - Capítulo 10.9.1)</p>
+                    <p><strong>Resistencia nominal columna:</strong> """ + f"{diseno_columna['Pn']/1000:.1f}" + """ ton (ACI 318-2025 - Capítulo 10.3.6)</p>
+                    <p><strong>Módulo de elasticidad concreto:</strong> """ + f"{props_concreto['Ec']:.0f}" + """ kg/cm² (ACI 318-2025 - Capítulo 19.2.2.1)</p>
+                    <p><strong>Módulo de elasticidad acero:</strong> """ + f"{props_acero['Es']:,}" + """ kg/cm² (ACI 318-2025 - Capítulo 20.2.2.1)</p>
                 </div>
                 """, unsafe_allow_html=True)
                 
