@@ -469,37 +469,119 @@ def generar_pdf_profesional(datos_proyecto, resultados_analisis):
         story.append(diseño_table)
         story.append(Spacer(1, 10))
         
-        # Sección de Verificaciones
-        story.append(Paragraph("VERIFICACIONES DE SEGURIDAD", heading_style))
+        # Sección de Verificaciones de Seguridad con Referencias Normativas
+        story.append(Paragraph("VERIFICACIONES DE SEGURIDAD CON REFERENCIAS NORMATIVAS", heading_style))
         
-        verificaciones_data = [
-            ["Verificación", "Estado"],
-            ["Vigas - Cuantía mínima", '✓ CUMPLE' if resultados_analisis['cumple_cuantia'] else '✗ NO CUMPLE'],
-            ["Vigas - Cuantía máxima", '✓ CUMPLE' if resultados_analisis['rho_provisto'] <= resultados_analisis['rho_max_viga'] else '✗ NO CUMPLE'],
-            ["Columnas - Resistencia axial", '✓ CUMPLE' if resultados_analisis['cumple_columna'] else '✗ NO CUMPLE']
+        # Verificaciones de vigas con referencias normativas
+        story.append(Paragraph("VERIFICACIÓN DE VIGAS - FLEXIÓN", ParagraphStyle(name='SubHeading', fontSize=10, textColor=colors.HexColor('#1e3c72'), spaceAfter=8)))
+        
+        viga_verificaciones = [
+            ["Verificación", "Estado", "Norma", "Artículo/Sección"],
+            ["Cuantía mínima de acero", '✓ CUMPLE' if resultados_analisis['cumple_cuantia'] else '✗ NO CUMPLE', "E.060 & ACI 318-2025", "E.060 Art. 10.5.1 / ACI 9.6.1"],
+            ["Cuantía máxima de acero", '✓ CUMPLE' if resultados_analisis['rho_provisto'] <= resultados_analisis['rho_max_viga'] else '✗ NO CUMPLE', "E.060 & ACI 318-2025", "E.060 Art. 10.3.3 / ACI 9.3.3"],
+            ["Resistencia a flexión", '✓ CUMPLE', "E.060 & ACI 318-2025", "E.060 Art. 10.3 / ACI 9.3"],
+            ["Factor de reducción φ", f"φ = {resultados_analisis['phi']}", "E.060 & ACI 318-2025", "E.060 Art. 9.3.2 / ACI 9.3"]
         ]
         
-        verificaciones_table = Table(verificaciones_data, colWidths=[3*inch, 2*inch])
-        verificaciones_table.setStyle(TableStyle([
+        viga_table = Table(viga_verificaciones, colWidths=[1.5*inch, 1*inch, 1.5*inch, 1.5*inch])
+        viga_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e3c72')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('FONTSIZE', (0, 0), (-1, -1), 8),
             ('GRID', (0, 0), (-1, -1), 1, colors.black),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
         ]))
-        story.append(verificaciones_table)
+        story.append(viga_table)
+        story.append(Spacer(1, 8))
+        
+        # Verificaciones de columnas con referencias normativas
+        story.append(Paragraph("VERIFICACIÓN DE COLUMNAS - COMPRESIÓN", ParagraphStyle(name='SubHeading', fontSize=10, textColor=colors.HexColor('#1e3c72'), spaceAfter=8)))
+        
+        columna_verificaciones = [
+            ["Verificación", "Estado", "Norma", "Artículo/Sección"],
+            ["Resistencia axial", '✓ CUMPLE' if resultados_analisis['cumple_columna'] else '✗ NO CUMPLE', "E.060 & ACI 318-2025", "E.060 Art. 10.3.6 / ACI 9.3.2"],
+            ["Cuantía mínima de acero", '✓ CUMPLE', "E.060 & ACI 318-2025", "E.060 Art. 10.9.1 / ACI 9.6.1"],
+            ["Cuantía máxima de acero", '✓ CUMPLE', "E.060 & ACI 318-2025", "E.060 Art. 10.9.1 / ACI 9.6.1"],
+            ["Factor de reducción φ", f"φ = {resultados_analisis['phi_col']}", "E.060 & ACI 318-2025", "E.060 Art. 9.3.2 / ACI 9.3"]
+        ]
+        
+        columna_table = Table(columna_verificaciones, colWidths=[1.5*inch, 1*inch, 1.5*inch, 1.5*inch])
+        columna_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e3c72')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 8),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+        ]))
+        story.append(columna_table)
         story.append(Spacer(1, 10))
         
-        # Conclusiones
-        story.append(Paragraph("CONCLUSIONES Y RECOMENDACIONES", heading_style))
+        # Sección de Parámetros Normativos en Español
+        story.append(Paragraph("PARÁMETROS NORMATIVOS - REFERENCIAS EN ESPAÑOL", heading_style))
+        
+        # Parámetros de vigas según normas
+        story.append(Paragraph("PARÁMETROS DE DISEÑO PARA VIGAS", ParagraphStyle(name='SubHeading', fontSize=10, textColor=colors.HexColor('#1e3c72'), spaceAfter=8)))
+        
+        parametros_vigas = [
+            ["Parámetro", "Valor", "Norma E.060", "Norma ACI 318-2025"],
+            ["Cuantía mínima ρmin", f"{resultados_analisis['rho_min_viga']:.4f}", "Art. 10.5.1: ρmin ≥ 0.8√f'c/fy", "Sección 9.6.1: ρmin ≥ 0.8√f'c/fy"],
+            ["Cuantía máxima ρmax", f"{resultados_analisis['rho_max_viga']:.4f}", "Art. 10.3.3: ρmax ≤ 0.025", "Sección 9.3.3: ρmax ≤ 0.025"],
+            ["Cuantía provista ρ", f"{resultados_analisis['rho_provisto']:.4f}", "Art. 10.3: Diseño por flexión", "Sección 9.3: Flexural design"],
+            ["Factor de reducción φ", f"{resultados_analisis['phi']}", "Art. 9.3.2: φ = 0.9 para flexión", "Sección 9.3: φ = 0.9 for flexure"]
+        ]
+        
+        viga_parametros_table = Table(parametros_vigas, colWidths=[1.5*inch, 1*inch, 1.5*inch, 1.5*inch])
+        viga_parametros_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e3c72')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 8),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+        ]))
+        story.append(viga_parametros_table)
+        story.append(Spacer(1, 8))
+        
+        # Parámetros de columnas según normas
+        story.append(Paragraph("PARÁMETROS DE DISEÑO PARA COLUMNAS", ParagraphStyle(name='SubHeading', fontSize=10, textColor=colors.HexColor('#1e3c72'), spaceAfter=8)))
+        
+        parametros_columnas = [
+            ["Parámetro", "Valor", "Norma E.060", "Norma ACI 318-2025"],
+            ["Cuantía mínima ρmin", "0.01 (1%)", "Art. 10.9.1: ρmin ≥ 0.01", "Sección 9.6.1: ρmin ≥ 0.01"],
+            ["Cuantía máxima ρmax", "0.06 (6%)", "Art. 10.9.1: ρmax ≤ 0.06", "Sección 9.6.1: ρmax ≤ 0.06"],
+            ["Factor de reducción φ", f"{resultados_analisis['phi_col']}", "Art. 9.3.2: φ = 0.65 para compresión", "Sección 9.3: φ = 0.65 for compression"],
+            ["Resistencia nominal Pn", f"{resultados_analisis['P_u']/resultados_analisis['phi_col']:.1f} ton", "Art. 10.3.6: Pn = Pu/φ", "Sección 9.3.2: Pn = Pu/φ"]
+        ]
+        
+        columna_parametros_table = Table(parametros_columnas, colWidths=[1.5*inch, 1*inch, 1.5*inch, 1.5*inch])
+        columna_parametros_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e3c72')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 8),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+        ]))
+        story.append(columna_parametros_table)
+        story.append(Spacer(1, 10))
+        
+        # Conclusiones con Referencias Normativas Específicas
+        story.append(Paragraph("CONCLUSIONES Y RECOMENDACIONES CON REFERENCIAS NORMATIVAS", heading_style))
         conclusiones = [
-            "1. El predimensionamiento cumple con las especificaciones de la Norma E.060",
-            "2. El análisis sísmico se realizó según la Norma E.030",
-            "3. El diseño estructural sigue los criterios de ACI 318-2025",
-            "4. Se verificaron las cuantías mínimas y máximas de acero",
-            "5. La estructura cumple con los requisitos de seguridad"
+            "1. El predimensionamiento cumple con las especificaciones de la Norma E.060 Art. 10.2 (Predimensionamiento)",
+            "2. El análisis sísmico se realizó según la Norma E.030 (Diseño Sismorresistente)",
+            "3. El diseño estructural sigue los criterios de ACI 318-2025 (Building Code Requirements)",
+            "4. Se verificaron las cuantías mínimas (E.060 Art. 10.5.1 / ACI 9.6.1) y máximas (E.060 Art. 10.3.3 / ACI 9.3.3) de acero",
+            "5. La estructura cumple con los requisitos de seguridad según E.060 Art. 9.3.2 y ACI 9.3 (Factores de reducción)",
+            "6. Las vigas cumplen con el diseño por flexión según E.060 Art. 10.3 y ACI 9.3",
+            "7. Las columnas cumplen con el diseño por compresión según E.060 Art. 10.3.6 y ACI 9.3.2",
+            "8. Los factores de reducción φ aplicados son: φ = 0.9 para flexión y φ = 0.65 para compresión"
         ]
         
         for conclusion in conclusiones:
@@ -526,11 +608,14 @@ def generar_pdf_profesional(datos_proyecto, resultados_analisis):
         story.append(firmas_table)
         story.append(Spacer(1, 15))
         
-        # Pie de página
+        # Pie de página con Referencias Normativas Completas
         story.append(Paragraph("<hr/>", normal_style))
         story.append(Paragraph("CONSORCIO DEJ - Ingeniería y Construcción", normal_style))
         story.append(Paragraph("Software de Análisis Estructural Profesional", normal_style))
-        story.append(Paragraph("Normas: E.060, E.030, ACI 318-2025", normal_style))
+        story.append(Paragraph("Normas Aplicadas:", normal_style))
+        story.append(Paragraph("• 🇵🇪 E.060 - Concreto Armado (Perú)", normal_style))
+        story.append(Paragraph("• 🇵🇪 E.030 - Diseño Sismorresistente (Perú)", normal_style))
+        story.append(Paragraph("• 🇺🇸 ACI 318-2025 - Building Code Requirements for Structural Concrete", normal_style))
         story.append(Paragraph("Generado automáticamente por CONSORCIO DEJ", 
                              ParagraphStyle(name='Footer', fontSize=8, alignment=TA_CENTER)))
         
