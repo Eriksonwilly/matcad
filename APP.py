@@ -7,25 +7,9 @@ import hashlib
 import io
 import base64
 
-# Importaciones condicionales para evitar errores
-try:
-    import plotly.graph_objects as go
-    PLOTLY_AVAILABLE = True
-except ImportError:
-    PLOTLY_AVAILABLE = False
-    st.warning("⚠️ Plotly no disponible. Los gráficos no se mostrarán.")
-
-try:
-    from reportlab.lib.pagesizes import A4
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.lib.units import inch
-    from reportlab.lib import colors
-    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
-    REPORTLAB_AVAILABLE = True
-except ImportError:
-    REPORTLAB_AVAILABLE = False
-    st.warning("⚠️ ReportLab no disponible. Los PDF no se generarán.")
+# Variables para controlar funcionalidades
+PLOTLY_AVAILABLE = False
+REPORTLAB_AVAILABLE = False
 
 # ===== CONFIGURACIÓN PARA MÓVIL/APK =====
 # Optimizaciones para dispositivos móviles
@@ -610,132 +594,57 @@ def show_pricing_page():
                 st.success("✅ Plan empresarial activado")
                 st.rerun()
 
-# Función para generar PDF profesional optimizada para Streamlit Cloud
-def generar_pdf_profesional(datos_proyecto, resultados_analisis):
-    if not REPORTLAB_AVAILABLE:
-        st.error("❌ ReportLab no está disponible. No se puede generar PDF.")
-        return None
-    
+# Función para generar reporte en texto (sin PDF)
+def generar_reporte_texto(datos_proyecto, resultados_analisis):
+    """Generar reporte en formato texto"""
     try:
+        reporte = f"""
+CONSORCIO DEJ - REPORTE ESTRUCTURAL
+=====================================
+
+FECHA: {datos_proyecto['fecha']}
+USUARIO: {datos_proyecto['usuario']}
+PROYECTO: Análisis Estructural
+SOFTWARE: CONSORCIO DEJ v2.0
+
+DATOS DEL PROYECTO:
+- f'c (Concreto): {datos_proyecto['fc']} kg/cm²
+- fy (Acero): {datos_proyecto['fy']} kg/cm²
+- Luz libre: {datos_proyecto['L_viga']} m
+- Número de pisos: {datos_proyecto['num_pisos']}
+- Zona sísmica: {datos_proyecto['zona_sismica']}
+
+RESULTADOS DEL ANÁLISIS:
+- Espesor de losa: {resultados_analisis['h_losa']:.0f} cm
+- Dimensiones de viga: {resultados_analisis['b_viga']:.0f}×{resultados_analisis['d_viga']:.0f} cm
+- Dimensiones de columna: {resultados_analisis['lado_columna']:.0f}×{resultados_analisis['lado_columna']:.0f} cm
+- Acero requerido en viga: {resultados_analisis['A_s_corr']:.2f} cm²
+- Cortante basal: {resultados_analisis['V']:.1f} ton
+- Período fundamental: {resultados_analisis['T']:.2f} s
+
+CONCLUSIONES:
+1. El análisis estructural cumple con las normas ACI 318-2025
+2. Se aplicaron los factores de reducción φ correspondientes
+3. Las verificaciones de seguridad son satisfactorias
+4. El diseño es conforme a las especificaciones técnicas
+
+REFERENCIAS NORMATIVAS:
+- 🇵🇪 E.060 - Concreto Armado (Perú)
+- 🇵🇪 E.030 - Diseño Sismorresistente (Perú)
+- 🇺🇸 ACI 318-2025 - Building Code Requirements
+
+CONSORCIO DEJ - Ingeniería y Construcción
+Software de Análisis Estructural Profesional
+        """
+        
+        # Crear buffer con el texto
         buffer = io.BytesIO()
-        
-        # Configuración del documento
-        doc = SimpleDocTemplate(
-            buffer,
-            pagesize=A4,
-            leftMargin=0.5*inch,
-            rightMargin=0.5*inch,
-            topMargin=0.5*inch,
-            bottomMargin=0.5*inch
-        )
-        
-        story = []
-        styles = getSampleStyleSheet()
-        
-        # Estilos básicos
-        title_style = ParagraphStyle(
-            'TitleStyle',
-            parent=styles['Heading1'],
-            fontSize=16,
-            alignment=TA_CENTER,
-            textColor=colors.HexColor('#1e3c72'),
-            spaceAfter=20,
-            fontName='Helvetica-Bold'
-        )
-        
-        heading_style = ParagraphStyle(
-            'HeadingStyle',
-            parent=styles['Heading2'],
-            fontSize=12,
-            textColor=colors.HexColor('#1e3c72'),
-            spaceAfter=10,
-            fontName='Helvetica-Bold'
-        )
-        
-        normal_style = ParagraphStyle(
-            'NormalStyle',
-            parent=styles['Normal'],
-            fontSize=9,
-            spaceAfter=6,
-            fontName='Helvetica'
-        )
-        
-        # Contenido básico del PDF
-        story.append(Paragraph("CONSORCIO DEJ - REPORTE ESTRUCTURAL", title_style))
-        story.append(Spacer(1, 15))
-        
-        # Información del proyecto
-        info_data = [
-            ["Fecha:", datos_proyecto['fecha']],
-            ["Usuario:", datos_proyecto['usuario']],
-            ["Proyecto:", "Análisis Estructural"],
-            ["Software:", "CONSORCIO DEJ v2.0"]
-        ]
-        
-        info_table = Table(info_data, colWidths=[1.5*inch, 4*inch])
-        info_table.setStyle(TableStyle([
-            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-            ('FONTSIZE', (0, 0), (-1, -1), 9),
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ('ALIGN', (0, 0), (0, -1), 'LEFT'),
-            ('ALIGN', (1, 0), (1, -1), 'LEFT'),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-        ]))
-        story.append(info_table)
-        story.append(Spacer(1, 15))
-        
-        # Resumen de resultados
-        story.append(Paragraph("RESUMEN DE RESULTADOS", heading_style))
-        
-        resumen_data = [
-            ["Parámetro", "Valor", "Unidad"],
-            ["f'c (Concreto)", f"{datos_proyecto['fc']}", "kg/cm²"],
-            ["fy (Acero)", f"{datos_proyecto['fy']}", "kg/cm²"],
-            ["Luz libre", f"{datos_proyecto['L_viga']}", "m"],
-            ["Número de pisos", f"{datos_proyecto['num_pisos']}", ""],
-            ["Cortante basal", f"{resultados_analisis['V']:.1f}", "ton"]
-        ]
-        
-        resumen_table = Table(resumen_data, colWidths=[2*inch, 1.5*inch, 1*inch])
-        resumen_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e3c72')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, -1), 9),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-        ]))
-        story.append(resumen_table)
-        story.append(Spacer(1, 15))
-        
-        # Conclusiones
-        story.append(Paragraph("CONCLUSIONES", heading_style))
-        conclusiones = [
-            "1. El análisis estructural cumple con las normas ACI 318-2025",
-            "2. Se aplicaron los factores de reducción φ correspondientes",
-            "3. Las verificaciones de seguridad son satisfactorias",
-            "4. El diseño es conforme a las especificaciones técnicas"
-        ]
-        
-        for conclusion in conclusiones:
-            story.append(Paragraph(conclusion, normal_style))
-        
-        story.append(Spacer(1, 15))
-        
-        # Pie de página
-        story.append(Paragraph("<hr/>", normal_style))
-        story.append(Paragraph("CONSORCIO DEJ - Ingeniería y Construcción", normal_style))
-        story.append(Paragraph("Software de Análisis Estructural Profesional", normal_style))
-        story.append(Paragraph("ACI 318-2025 & E.060 | E.030", normal_style))
-        
-        # Construir el PDF
-        doc.build(story)
+        buffer.write(reporte.encode('utf-8'))
         buffer.seek(0)
         return buffer
         
     except Exception as e:
-        st.error(f"Error al generar PDF: {str(e)}")
+        st.error(f"Error al generar reporte: {str(e)}")
         return None
 
 # Verificar autenticación
@@ -1044,36 +953,13 @@ if st.session_state.authenticated:
             else:
                 st.warning(f"⚠️ Peso por nivel alto ({peso_por_nivel:.1f} ton)")
             
-            # Gráfico básico
-            if PLOTLY_AVAILABLE:
-                st.subheader("📈 Gráfico de Pesos")
-                datos = pd.DataFrame({
-                    'Parámetro': ['Peso Total', 'Peso por Nivel'],
-                    'Valor (ton)': [peso_total, peso_por_nivel]
-                })
-                
-                fig = go.Figure(data=[
-                    go.Bar(x=datos['Parámetro'], y=datos['Valor (ton)'],
-                          marker_color=['#2E8B57', '#DC143C'],
-                          text=[f"{val:.1f}" for val in datos['Valor (ton)']],
-                          textposition='outside')
-                ])
-                
-                fig.update_layout(
-                    title="Análisis de Pesos - Plan Básico",
-                    xaxis_title="Parámetro",
-                    yaxis_title="Peso (ton)",
-                    height=400
-                )
-                
-                st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.subheader("📊 Resultados en Tabla")
-                datos_tabla = pd.DataFrame({
-                    'Parámetro': ['Peso Total', 'Peso por Nivel'],
-                    'Valor (ton)': [peso_total, peso_por_nivel]
-                })
-                st.dataframe(datos_tabla, use_container_width=True)
+            # Resultados en tabla (sin gráficos)
+            st.subheader("📊 Resultados en Tabla")
+            datos_tabla = pd.DataFrame({
+                'Parámetro': ['Peso Total', 'Peso por Nivel', 'Período Fundamental'],
+                'Valor': [f"{peso_total:.1f} ton", f"{peso_por_nivel:.1f} ton", f"{T:.2f} s"]
+            })
+            st.dataframe(datos_tabla, use_container_width=True)
     
     elif opcion == "📊 Análisis Completo":
         # Verificar plan del usuario
@@ -1329,24 +1215,14 @@ if st.session_state.authenticated:
                     </div>
                     """, unsafe_allow_html=True)
                     
-                    # Gráfico de fuerzas sísmicas
-                    fig_sismo = go.Figure()
-                    fig_sismo.add_trace(go.Bar(
-                        x=list(range(1, num_pisos+1)),
-                        y=[f/1000 for f in Fx],
-                        name='Fuerza Sísmica',
-                        marker_color='#dc3545',
-                        text=[f"{f/1000:.1f}" for f in Fx],
-                        textposition='outside'
-                    ))
-                    fig_sismo.update_layout(
-                        title="Distribución de Fuerzas Sísmicas",
-                        xaxis_title="Nivel",
-                        yaxis_title="Fuerza (ton)",
-                        template="plotly_white",
-                        height=400
-                    )
-                    st.plotly_chart(fig_sismo, use_container_width=True)
+                    # Tabla de fuerzas sísmicas
+                    st.subheader("📊 Distribución de Fuerzas Sísmicas")
+                    fuerzas_data = {
+                        'Nivel': list(range(1, num_pisos+1)),
+                        'Fuerza (ton)': [f"{f/1000:.1f}" for f in Fx]
+                    }
+                    df_fuerzas = pd.DataFrame(fuerzas_data)
+                    st.dataframe(df_fuerzas, use_container_width=True)
                 
                                 # === DISEÑO ESTRUCTURAL SEGÚN ACI 318-2025 ===
                 st.markdown("""
@@ -1557,99 +1433,22 @@ if st.session_state.authenticated:
                     momento = momento_base * factor_centro
                     momentos.append(momento)
                 
-                # Gráfico de cortantes estilo McCormac
-                fig_cortante = go.Figure()
-                fig_cortante.add_trace(go.Scatter(
-                    x=pisos,
-                    y=[c/1000 for c in cortantes],
-                    mode='lines+markers',
-                    name='Cortante (ton)',
-                    line=dict(color='#dc3545', width=4),
-                    marker=dict(size=10, color='#dc3545', symbol='circle'),
-                    fill='tonexty',
-                    fillcolor='rgba(220, 53, 69, 0.2)'
-                ))
-                fig_cortante.update_layout(
-                    title="Diagrama de Cortantes por Piso (Estilo McCormac)",
-                    xaxis_title="Nivel",
-                    yaxis_title="Cortante (ton)",
-                    template="plotly_white",
-                    height=450,
-                    showlegend=True,
-                    font=dict(size=14),
-                    plot_bgcolor='white',
-                    paper_bgcolor='white'
-                )
-                fig_cortante.update_xaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
-                fig_cortante.update_yaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
-                st.plotly_chart(fig_cortante, use_container_width=True)
+                # Tablas de cortantes y momentos estilo McCormac
+                st.subheader("📊 Diagrama de Cortantes por Piso")
+                cortantes_data = {
+                    'Nivel': pisos,
+                    'Cortante (ton)': [f"{c/1000:.2f}" for c in cortantes]
+                }
+                df_cortantes = pd.DataFrame(cortantes_data)
+                st.dataframe(df_cortantes, use_container_width=True)
                 
-                # Gráfico de momentos estilo McCormac
-                fig_momento = go.Figure()
-                fig_momento.add_trace(go.Scatter(
-                    x=pisos,
-                    y=[m/100 for m in momentos],
-                    mode='lines+markers',
-                    name='Momento (ton·m)',
-                    line=dict(color='#007bff', width=4),
-                    marker=dict(size=10, color='#007bff', symbol='diamond'),
-                    fill='tonexty',
-                    fillcolor='rgba(0, 123, 255, 0.2)'
-                ))
-                fig_momento.update_layout(
-                    title="Diagrama de Momentos por Piso (Estilo McCormac)",
-                    xaxis_title="Nivel",
-                    yaxis_title="Momento (ton·m)",
-                    template="plotly_white",
-                    height=450,
-                    showlegend=True,
-                    font=dict(size=14),
-                    plot_bgcolor='white',
-                    paper_bgcolor='white'
-                )
-                fig_momento.update_xaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
-                fig_momento.update_yaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
-                st.plotly_chart(fig_momento, use_container_width=True)
-                
-                # Gráfico combinado simplificado (sin ejes duales para evitar errores)
-                fig_combinado = go.Figure()
-                
-                # Normalizar los valores para mostrar en el mismo eje
-                cortantes_norm = [c/1000 for c in cortantes]
-                momentos_norm = [m/100 for m in momentos]
-                
-                fig_combinado.add_trace(go.Scatter(
-                    x=pisos,
-                    y=cortantes_norm,
-                    mode='lines+markers',
-                    name='Cortante (ton)',
-                    line=dict(color='#dc3545', width=3),
-                    marker=dict(size=8, color='#dc3545')
-                ))
-                
-                fig_combinado.add_trace(go.Scatter(
-                    x=pisos,
-                    y=momentos_norm,
-                    mode='lines+markers',
-                    name='Momento (ton·m)',
-                    line=dict(color='#007bff', width=3),
-                    marker=dict(size=8, color='#007bff')
-                ))
-                
-                fig_combinado.update_layout(
-                    title="Diagrama Combinado de Cortantes y Momentos (Estilo McCormac)",
-                    xaxis_title="Nivel",
-                    yaxis_title="Valores Normalizados",
-                    template="plotly_white",
-                    height=500,
-                    showlegend=True,
-                    font=dict(size=14),
-                    plot_bgcolor='white',
-                    paper_bgcolor='white'
-                )
-                fig_combinado.update_xaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
-                fig_combinado.update_yaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
-                st.plotly_chart(fig_combinado, use_container_width=True)
+                st.subheader("📊 Diagrama de Momentos por Piso")
+                momentos_data = {
+                    'Nivel': pisos,
+                    'Momento (ton·m)': [f"{m/100:.2f}" for m in momentos]
+                }
+                df_momentos = pd.DataFrame(momentos_data)
+                st.dataframe(df_momentos, use_container_width=True)
                 
                 # Tabla de valores tipo McCormac
                 st.markdown("""
@@ -1826,8 +1625,8 @@ if st.session_state.authenticated:
                                 'cumple_columna': cumple_columna
                             }
                             
-                            # Generar reporte en PDF
-                            pdf_buffer = generar_pdf_profesional(datos_proyecto, resultados_analisis)
+                            # Generar reporte en texto
+                            pdf_buffer = generar_reporte_texto(datos_proyecto, resultados_analisis)
                             
                             if pdf_buffer:
                                 # Crear botón de descarga
@@ -2108,8 +1907,8 @@ if st.session_state.authenticated:
                                         'cumple_columna': Pn <= P0
                                     }
                                     
-                                    # Generar reporte en PDF
-                                    pdf_buffer = generar_pdf_profesional(datos_proyecto, resultados_analisis)
+                                    # Generar reporte en texto
+                                    pdf_buffer = generar_reporte_texto(datos_proyecto, resultados_analisis)
                                     
                                     if pdf_buffer:
                                         # Crear botón de descarga
@@ -2193,27 +1992,13 @@ if st.session_state.authenticated:
                     if 'resultados_basicos' in st.session_state:
                         resultados = st.session_state['resultados_basicos']
                         
-                        # Gráfico de barras básico
+                        # Tabla de resultados básicos
                         datos = pd.DataFrame({
                             'Parámetro': ['Peso Total', 'Peso por Nivel', 'Período'],
-                            'Valor': [resultados['peso_total'], resultados['peso_por_nivel'], resultados['periodo_fundamental']]
+                            'Valor': [f"{resultados['peso_total']:.1f} ton", f"{resultados['peso_por_nivel']:.1f} ton", f"{resultados['periodo_fundamental']:.2f} s"]
                         })
                         
-                        fig = go.Figure(data=[
-                            go.Bar(x=datos['Parámetro'], y=datos['Valor'],
-                                  marker_color=['#2E8B57', '#DC143C', '#4169E1'],
-                                  text=[f"{val:.1f}" for val in datos['Valor']],
-                                  textposition='outside')
-                        ])
-                        
-                        fig.update_layout(
-                            title="Análisis Básico - Gráfico de Resultados",
-                            xaxis_title="Parámetro",
-                            yaxis_title="Valor",
-                            height=400
-                        )
-                        
-                        st.plotly_chart(fig, use_container_width=True)
+                        st.dataframe(datos, use_container_width=True)
                 
                 elif tipo_grafico == "📈 Diagramas McCormac":
                     st.subheader("📈 Diagramas McCormac")

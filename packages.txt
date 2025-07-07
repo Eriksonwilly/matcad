@@ -1,3 +1,1 @@
-# System dependencies for Streamlit Cloud
-fonts-liberation
-fontconfig 
+# No se requieren paquetes del sistema adicionales 
