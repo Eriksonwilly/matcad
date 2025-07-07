@@ -17,7 +17,6 @@ try:
     MATPLOTLIB_AVAILABLE = True
 except ImportError:
     MATPLOTLIB_AVAILABLE = False
-    st.warning("⚠️ Matplotlib no está instalado. Los gráficos básicos no estarán disponibles.")
 
 # Importar sistema de pagos simple
 try:
@@ -25,7 +24,6 @@ try:
     PAYMENT_SYSTEM_AVAILABLE = True
 except ImportError:
     PAYMENT_SYSTEM_AVAILABLE = False
-    st.warning("⚠️ Sistema de pagos no disponible. Usando modo demo.")
 
 # Importaciones opcionales con manejo de errores
 try:
@@ -34,7 +32,6 @@ try:
     PLOTLY_AVAILABLE = True
 except ImportError:
     PLOTLY_AVAILABLE = False
-    st.warning("⚠️ Plotly no está instalado. Los gráficos interactivos no estarán disponibles.")
 
 try:
     from reportlab.lib.pagesizes import A4, letter
@@ -45,7 +42,215 @@ try:
     REPORTLAB_AVAILABLE = True
 except ImportError:
     REPORTLAB_AVAILABLE = False
-    st.warning("⚠️ ReportLab no está instalado. La generación de PDFs no estará disponible.")
+
+# =====================
+# FUNCIONES PARA GRÁFICOS DE CORTANTES Y MOMENTOS (ARTHUR H. NILSON)
+# =====================
+
+def calcular_cortantes_momentos_viga_simple(L, w, P=None, a=None):
+    """
+    Calcula cortantes y momentos para viga simplemente apoyada
+    Según Arthur H. Nilson - Diseño de Estructuras de Concreto
+    
+    L: Luz de la viga (m)
+    w: Carga distribuida (kg/m)
+    P: Carga puntual (kg) - opcional
+    a: Distancia de la carga puntual desde el apoyo izquierdo (m) - opcional
+    """
+    x = np.linspace(0, L, 100)
+    
+    # Inicializar arrays
+    V = np.zeros_like(x)
+    M = np.zeros_like(x)
+    
+    # Carga distribuida
+    if w > 0:
+        # Reacciones
+        R_A = w * L / 2
+        R_B = w * L / 2
+        
+        # Cortantes y momentos
+        V = R_A - w * x
+        M = R_A * x - w * x**2 / 2
+    
+    # Carga puntual
+    if P is not None and a is not None:
+        # Reacciones
+        R_A = P * (L - a) / L
+        R_B = P * a / L
+        
+        # Cortantes y momentos
+        for i, xi in enumerate(x):
+            if xi <= a:
+                V[i] = R_A
+                M[i] = R_A * xi
+            else:
+                V[i] = R_A - P
+                M[i] = R_A * xi - P * (xi - a)
+    
+    return x, V, M
+
+def calcular_cortantes_momentos_viga_empotrada(L, w, P=None, a=None):
+    """
+    Calcula cortantes y momentos para viga empotrada
+    Según Arthur H. Nilson - Diseño de Estructuras de Concreto
+    """
+    x = np.linspace(0, L, 100)
+    
+    # Inicializar arrays
+    V = np.zeros_like(x)
+    M = np.zeros_like(x)
+    
+    # Carga distribuida
+    if w > 0:
+        # Reacciones y momentos de empotramiento
+        R_A = w * L / 2
+        M_A = -w * L**2 / 12
+        M_B = w * L**2 / 12
+        
+        # Cortantes y momentos
+        V = R_A - w * x
+        M = M_A + R_A * x - w * x**2 / 2
+    
+    # Carga puntual
+    if P is not None and a is not None:
+        # Reacciones y momentos de empotramiento
+        R_A = P * (3*L - 2*a) * (L - a) / (2*L**2)
+        R_B = P * (3*L - 2*a) * a / (2*L**2)
+        M_A = -P * a * (L - a)**2 / (2*L**2)
+        M_B = P * a**2 * (L - a) / (2*L**2)
+        
+        # Cortantes y momentos
+        for i, xi in enumerate(x):
+            if xi <= a:
+                V[i] = R_A
+                M[i] = M_A + R_A * xi
+            else:
+                V[i] = R_A - P
+                M[i] = M_A + R_A * xi - P * (xi - a)
+    
+    return x, V, M
+
+def calcular_cortantes_momentos_viga_continua(L1, L2, w1, w2):
+    """
+    Calcula cortantes y momentos para viga continua de dos tramos
+    Según Arthur H. Nilson - Diseño de Estructuras de Concreto
+    """
+    # Coeficientes de momento para viga continua
+    # M_B = -w1*L1^2/8 - w2*L2^2/8 (aproximación)
+    M_B = -(w1 * L1**2 + w2 * L2**2) / 8
+    
+    # Reacciones
+    R_A = (w1 * L1 / 2) - (M_B / L1)
+    R_B1 = (w1 * L1 / 2) + (M_B / L1)
+    R_B2 = (w2 * L2 / 2) - (M_B / L2)
+    R_C = (w2 * L2 / 2) + (M_B / L2)
+    
+    # Generar puntos para cada tramo
+    x1 = np.linspace(0, L1, 50)
+    x2 = np.linspace(0, L2, 50)
+    
+    # Cortantes y momentos para tramo 1
+    V1 = R_A - w1 * x1
+    M1 = R_A * x1 - w1 * x1**2 / 2
+    
+    # Cortantes y momentos para tramo 2
+    V2 = R_B2 - w2 * x2
+    M2 = R_B2 * x2 - w2 * x2**2 / 2 + M_B
+    
+    return x1, V1, M1, x2, V2, M2, R_A, R_B1, R_B2, R_C, M_B
+
+def graficar_cortantes_momentos_nilson(L, w, P=None, a=None, tipo_viga="simple"):
+    """
+    Genera gráficos de cortantes y momentos según Arthur H. Nilson
+    """
+    if not MATPLOTLIB_AVAILABLE:
+        st.error("❌ Matplotlib no está instalado. Instale con: pip install matplotlib")
+        return None
+    
+    if tipo_viga == "simple":
+        x, V, M = calcular_cortantes_momentos_viga_simple(L, w, P, a)
+    elif tipo_viga == "empotrada":
+        x, V, M = calcular_cortantes_momentos_viga_empotrada(L, w, P, a)
+    else:
+        st.error("Tipo de viga no válido")
+        return None
+    
+    # Crear figura con subplots
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 8))
+    
+    # Gráfico de cortantes
+    ax1.plot(x, V, 'r-', linewidth=2, label='Cortante (V)')
+    ax1.axhline(y=0, color='k', linestyle='-', alpha=0.3)
+    ax1.axvline(x=0, color='k', linestyle='-', alpha=0.3)
+    ax1.axvline(x=L, color='k', linestyle='-', alpha=0.3)
+    ax1.fill_between(x, V, 0, alpha=0.3, color='red')
+    ax1.set_title(f'Diagrama de Cortantes - Viga {tipo_viga.title()}', fontsize=14, fontweight='bold')
+    ax1.set_xlabel('Distancia (m)')
+    ax1.set_ylabel('Cortante (kg)')
+    ax1.grid(True, alpha=0.3)
+    ax1.legend()
+    
+    # Gráfico de momentos
+    ax2.plot(x, M, 'b-', linewidth=2, label='Momento (M)')
+    ax2.axhline(y=0, color='k', linestyle='-', alpha=0.3)
+    ax2.axvline(x=0, color='k', linestyle='-', alpha=0.3)
+    ax2.axvline(x=L, color='k', linestyle='-', alpha=0.3)
+    ax2.fill_between(x, M, 0, alpha=0.3, color='blue')
+    ax2.set_title(f'Diagrama de Momentos - Viga {tipo_viga.title()}', fontsize=14, fontweight='bold')
+    ax2.set_xlabel('Distancia (m)')
+    ax2.set_ylabel('Momento (kg·m)')
+    ax2.grid(True, alpha=0.3)
+    ax2.legend()
+    
+    plt.tight_layout()
+    return fig
+
+def graficar_viga_continua_nilson(L1, L2, w1, w2):
+    """
+    Genera gráficos de cortantes y momentos para viga continua
+    """
+    if not MATPLOTLIB_AVAILABLE:
+        st.error("❌ Matplotlib no está instalado. Instale con: pip install matplotlib")
+        return None
+    
+    x1, V1, M1, x2, V2, M2, R_A, R_B1, R_B2, R_C, M_B = calcular_cortantes_momentos_viga_continua(L1, L2, w1, w2)
+    
+    # Crear figura con subplots
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(14, 10))
+    
+    # Gráfico de cortantes
+    ax1.plot(x1, V1, 'r-', linewidth=2, label='Tramo 1')
+    ax1.plot(x2 + L1, V2, 'r-', linewidth=2, label='Tramo 2')
+    ax1.axhline(y=0, color='k', linestyle='-', alpha=0.3)
+    ax1.axvline(x=0, color='k', linestyle='-', alpha=0.3)
+    ax1.axvline(x=L1, color='k', linestyle='-', alpha=0.3)
+    ax1.axvline(x=L1+L2, color='k', linestyle='-', alpha=0.3)
+    ax1.fill_between(x1, V1, 0, alpha=0.3, color='red')
+    ax1.fill_between(x2 + L1, V2, 0, alpha=0.3, color='red')
+    ax1.set_title('Diagrama de Cortantes - Viga Continua', fontsize=14, fontweight='bold')
+    ax1.set_xlabel('Distancia (m)')
+    ax1.set_ylabel('Cortante (kg)')
+    ax1.grid(True, alpha=0.3)
+    ax1.legend()
+    
+    # Gráfico de momentos
+    ax2.plot(x1, M1, 'b-', linewidth=2, label='Tramo 1')
+    ax2.plot(x2 + L1, M2, 'b-', linewidth=2, label='Tramo 2')
+    ax2.axhline(y=0, color='k', linestyle='-', alpha=0.3)
+    ax2.axvline(x=0, color='k', linestyle='-', alpha=0.3)
+    ax2.axvline(x=L1, color='k', linestyle='-', alpha=0.3)
+    ax2.axvline(x=L1+L2, color='k', linestyle='-', alpha=0.3)
+    ax2.fill_between(x1, M1, 0, alpha=0.3, color='blue')
+    ax2.fill_between(x2 + L1, M2, 0, alpha=0.3, color='blue')
+    ax2.set_title('Diagrama de Momentos - Viga Continua', fontsize=14, fontweight='bold')
+    ax2.set_xlabel('Distancia (m)')
+    ax2.set_ylabel('Momento (kg·m)')
+    ax2.grid(True, alpha=0.3)
+    ax2.legend()
+    
+    plt.tight_layout()
+    return fig
 
 # =====================
 # SISTEMA DE LOGIN Y PLANES
@@ -126,8 +331,8 @@ Generado por: CONSORCIO DEJ
         
         tabla = Table(datos_tabla, colWidths=[200, 100, 80])
         tabla.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.lightblue),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.Color(0.7, 0.8, 1.0)),
+            ('GRID', (0, 0), (-1, -1), 1, colors.Color(0, 0, 0)),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
         ]))
         elements.append(tabla)
@@ -148,8 +353,8 @@ Generado por: CONSORCIO DEJ
             
             tabla_resultados = Table(resultados_tabla, colWidths=[200, 100, 80])
             tabla_resultados.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), colors.lightgreen),
-                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                ('BACKGROUND', (0, 0), (-1, 0), colors.Color(0.7, 1.0, 0.7)),
+                ('GRID', (0, 0), (-1, -1), 1, colors.Color(0, 0, 0)),
                 ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
             ]))
             elements.append(tabla_resultados)
@@ -1319,111 +1524,270 @@ elif opcion == "📚 Fórmulas de Diseño Estructural":
 elif opcion == "📈 Gráficos":
     st.title("📈 Gráficos y Visualizaciones")
     
-    if st.session_state['plan'] == "gratuito":
-        st.warning("⚠️ Esta función requiere plan premium. Actualiza tu cuenta para acceder a gráficos avanzados.")
-        st.info("Plan gratuito incluye: Cálculos básicos, resultados simples")
-        st.info("Plan premium incluye: Gráficos interactivos, visualizaciones avanzadas")
+    # Pestañas para diferentes tipos de gráficos
+    tab1, tab2, tab3 = st.tabs(["📊 Gráficos Básicos", "🔧 Cortantes y Momentos (Nilson)", "📈 Gráficos Avanzados"])
+    
+    with tab1:
+        st.subheader("📊 Gráficos Básicos")
         
-        # Mostrar botón para actualizar plan
-        col1, col2, col3 = st.columns([1, 2, 1])
-        with col2:
-            if st.button("⭐ Actualizar a Premium", type="primary", key="upgrade_graficos"):
-                st.session_state['show_pricing'] = True
-                st.rerun()
-    else:
-        # Gráficos premium
-        if 'resultados_completos' in st.session_state:
-            resultados = st.session_state['resultados_completos']
+        if st.session_state['plan'] == "gratuito":
+            st.warning("⚠️ Esta función requiere plan premium. Actualiza tu cuenta para acceder a gráficos avanzados.")
+            st.info("Plan gratuito incluye: Cálculos básicos, resultados simples")
+            st.info("Plan premium incluye: Gráficos interactivos, visualizaciones avanzadas")
             
-            # Gráfico de propiedades
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                if PLOTLY_AVAILABLE:
-                    datos_propiedades = pd.DataFrame({
-                        'Propiedad': ['Ec (kg/cm²)', 'Es (kg/cm²)', 'fr (kg/cm²)', 'β1'],
-                        'Valor': [resultados.get('Ec', 0)/1000, resultados.get('Es', 0)/1000000, 
-                                 resultados.get('fr', 0), resultados.get('beta1', 0)]
-                    })
-                    
-                    fig1 = px.bar(datos_propiedades, x='Propiedad', y='Valor',
-                                 title="Propiedades de los Materiales - Plan Premium",
-                                 color='Propiedad',
-                                 color_discrete_map={
-                                     'Ec (kg/cm²)': '#4169E1',
-                                     'Es (kg/cm²)': '#DC143C',
-                                     'fr (kg/cm²)': '#32CD32',
-                                     'β1': '#FFD700'
-                                 })
-                    
-                    fig1.update_layout(
-                        xaxis_title="Propiedad",
-                        yaxis_title="Valor",
-                        height=400
-                    )
-                    
-                    fig1.update_traces(texttemplate='%{y:.2f}', textposition='outside')
-                    st.plotly_chart(fig1, use_container_width=True)
-                else:
-                    # Gráfico alternativo con matplotlib
-                    if MATPLOTLIB_AVAILABLE:
-                        fig1, ax1 = plt.subplots(figsize=(8, 6))
-                        propiedades = ['Ec', 'Es', 'fr', 'β1']
-                        valores = [resultados.get('Ec', 0)/1000, resultados.get('Es', 0)/1000000, 
-                                  resultados.get('fr', 0), resultados.get('beta1', 0)]
-                        colors = ['#4169E1', '#DC143C', '#32CD32', '#FFD700']
-                        
-                        bars = ax1.bar(propiedades, valores, color=colors)
-                        ax1.set_title("Propiedades de los Materiales - Plan Premium")
-                        ax1.set_ylabel("Valor")
-                        
-                        for bar in bars:
-                            height = bar.get_height()
-                            ax1.text(bar.get_x() + bar.get_width()/2., height + 0.1,
-                                   f'{height:.2f}', ha='center', va='bottom')
-                        
-                        st.pyplot(fig1)
-                    else:
-                        st.info("📊 Gráfico no disponible - Matplotlib no está instalado")
-                        st.write("Para ver gráficos, instale matplotlib: `pip install matplotlib`")
-            
+            # Mostrar botón para actualizar plan
+            col1, col2, col3 = st.columns([1, 2, 1])
             with col2:
-                # Gráfico de dimensiones
-                if PLOTLY_AVAILABLE:
-                    datos_dimensiones = pd.DataFrame({
-                        'Dimensión': ['Peso Total (ton)', 'Espesor Losa (cm)', 'Ancho Viga (cm)', 'Alto Viga (cm)'],
-                        'Valor': [resultados.get('peso_total', 0), resultados.get('h_losa', 0)*100, 
-                                 resultados.get('b_viga', 0), resultados.get('d_viga', 0)]
-                    })
-                    
-                    fig2 = px.pie(datos_dimensiones, values='Valor', names='Dimensión',
-                                 title="Distribución de Dimensiones - Plan Premium",
-                                 color_discrete_map={
-                                     'Peso Total (ton)': '#2E8B57',
-                                     'Espesor Losa (cm)': '#FF6B6B',
-                                     'Ancho Viga (cm)': '#4ECDC4',
-                                     'Alto Viga (cm)': '#FFD93D'
-                                 })
-                    
-                    fig2.update_traces(textposition='inside', textinfo='percent+label+value')
-                    st.plotly_chart(fig2, use_container_width=True)
-                else:
-                    # Gráfico alternativo con matplotlib
-                    if MATPLOTLIB_AVAILABLE:
-                        fig2, ax2 = plt.subplots(figsize=(8, 8))
-                        dimensiones = ['Peso Total', 'Espesor Losa', 'Ancho Viga', 'Alto Viga']
-                        valores = [resultados.get('peso_total', 0), resultados.get('h_losa', 0)*100, 
-                                  resultados.get('b_viga', 0), resultados.get('d_viga', 0)]
-                        colors = ['#2E8B57', '#FF6B6B', '#4ECDC4', '#FFD93D']
-                        
-                        ax2.pie(valores, labels=dimensiones, autopct='%1.1f%%', colors=colors)
-                        ax2.set_title("Distribución de Dimensiones - Plan Premium")
-                        st.pyplot(fig2)
-                    else:
-                        st.info("📊 Gráfico no disponible - Matplotlib no está instalado")
-                        st.write("Para ver gráficos, instale matplotlib: `pip install matplotlib`")
+                if st.button("⭐ Actualizar a Premium", type="primary", key="upgrade_graficos"):
+                    st.session_state['show_pricing'] = True
+                    st.rerun()
         else:
-            st.warning("⚠️ No hay resultados disponibles. Realiza primero el análisis completo.")
+            # Gráficos premium
+            if 'resultados_completos' in st.session_state:
+                resultados = st.session_state['resultados_completos']
+                
+                # Gráfico de propiedades
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    if PLOTLY_AVAILABLE:
+                        datos_propiedades = pd.DataFrame({
+                            'Propiedad': ['Ec (kg/cm²)', 'Es (kg/cm²)', 'fr (kg/cm²)', 'β1'],
+                            'Valor': [resultados.get('Ec', 0)/1000, resultados.get('Es', 0)/1000000, 
+                                     resultados.get('fr', 0), resultados.get('beta1', 0)]
+                        })
+                        
+                        fig1 = px.bar(datos_propiedades, x='Propiedad', y='Valor',
+                                     title="Propiedades de los Materiales - Plan Premium",
+                                     color='Propiedad',
+                                     color_discrete_map={
+                                         'Ec (kg/cm²)': '#4169E1',
+                                         'Es (kg/cm²)': '#DC143C',
+                                         'fr (kg/cm²)': '#32CD32',
+                                         'β1': '#FFD700'
+                                     })
+                        
+                        fig1.update_layout(
+                            xaxis_title="Propiedad",
+                            yaxis_title="Valor",
+                            height=400
+                        )
+                        
+                        fig1.update_traces(texttemplate='%{y:.2f}', textposition='outside')
+                        st.plotly_chart(fig1, use_container_width=True)
+                    else:
+                        # Gráfico alternativo con matplotlib
+                        if MATPLOTLIB_AVAILABLE:
+                            fig1, ax1 = plt.subplots(figsize=(8, 6))
+                            propiedades = ['Ec', 'Es', 'fr', 'β1']
+                            valores = [resultados.get('Ec', 0)/1000, resultados.get('Es', 0)/1000000, 
+                                      resultados.get('fr', 0), resultados.get('beta1', 0)]
+                            colors = ['#4169E1', '#DC143C', '#32CD32', '#FFD700']
+                            
+                            bars = ax1.bar(propiedades, valores, color=colors)
+                            ax1.set_title("Propiedades de los Materiales - Plan Premium")
+                            ax1.set_ylabel("Valor")
+                            
+                            for bar in bars:
+                                height = bar.get_height()
+                                ax1.text(bar.get_x() + bar.get_width()/2., height + 0.1,
+                                       f'{height:.2f}', ha='center', va='bottom')
+                            
+                            st.pyplot(fig1)
+                        else:
+                            st.info("📊 Gráfico no disponible - Matplotlib no está instalado")
+                            st.write("Para ver gráficos, instale matplotlib: `pip install matplotlib`")
+                
+                with col2:
+                    # Gráfico de dimensiones
+                    if PLOTLY_AVAILABLE:
+                        datos_dimensiones = pd.DataFrame({
+                            'Dimensión': ['Peso Total (ton)', 'Espesor Losa (cm)', 'Ancho Viga (cm)', 'Alto Viga (cm)'],
+                            'Valor': [resultados.get('peso_total', 0), resultados.get('h_losa', 0)*100, 
+                                     resultados.get('b_viga', 0), resultados.get('d_viga', 0)]
+                        })
+                        
+                        fig2 = px.pie(datos_dimensiones, values='Valor', names='Dimensión',
+                                     title="Distribución de Dimensiones - Plan Premium",
+                                     color_discrete_map={
+                                         'Peso Total (ton)': '#2E8B57',
+                                         'Espesor Losa (cm)': '#FF6B6B',
+                                         'Ancho Viga (cm)': '#4ECDC4',
+                                         'Alto Viga (cm)': '#FFD93D'
+                                     })
+                        
+                        fig2.update_traces(textposition='inside', textinfo='percent+label+value')
+                        st.plotly_chart(fig2, use_container_width=True)
+                    else:
+                        # Gráfico alternativo con matplotlib
+                        if MATPLOTLIB_AVAILABLE:
+                            fig2, ax2 = plt.subplots(figsize=(8, 8))
+                            dimensiones = ['Peso Total', 'Espesor Losa', 'Ancho Viga', 'Alto Viga']
+                            valores = [resultados.get('peso_total', 0), resultados.get('h_losa', 0)*100, 
+                                      resultados.get('b_viga', 0), resultados.get('d_viga', 0)]
+                            colors = ['#2E8B57', '#FF6B6B', '#4ECDC4', '#FFD93D']
+                            
+                            ax2.pie(valores, labels=dimensiones, autopct='%1.1f%%', colors=colors)
+                            ax2.set_title("Distribución de Dimensiones - Plan Premium")
+                            st.pyplot(fig2)
+                        else:
+                            st.info("📊 Gráfico no disponible - Matplotlib no está instalado")
+                            st.write("Para ver gráficos, instale matplotlib: `pip install matplotlib`")
+            else:
+                st.warning("⚠️ No hay resultados disponibles. Realiza primero el análisis completo.")
+    
+    with tab2:
+        st.subheader("🔧 Diagramas de Cortantes y Momentos - Arthur H. Nilson")
+        st.info("📚 Basado en 'Diseño de Estructuras de Concreto' de Arthur H. Nilson")
+        
+        # Verificar si matplotlib está disponible
+        if not MATPLOTLIB_AVAILABLE:
+            st.error("❌ Matplotlib no está instalado. Para usar esta función, instale matplotlib:")
+            st.code("pip install matplotlib")
+            st.info("🔧 Después de instalar matplotlib, recarga la aplicación")
+        else:
+            # Seleccionar tipo de viga
+            tipo_viga = st.selectbox(
+                "Selecciona el tipo de viga:",
+                ["Viga Simplemente Apoyada", "Viga Empotrada", "Viga Continua (2 tramos)"],
+                help="Según Arthur H. Nilson - Diseño de Estructuras de Concreto"
+            )
+            
+            if tipo_viga == "Viga Simplemente Apoyada":
+                st.markdown("### 📐 Viga Simplemente Apoyada")
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    L = st.number_input("Luz de la viga (m)", 1.0, 20.0, 6.0, 0.5)
+                    w = st.number_input("Carga distribuida (kg/m)", 0.0, 10000.0, 1000.0, 100.0)
+                
+                with col2:
+                    usar_carga_puntual = st.checkbox("Agregar carga puntual")
+                    if usar_carga_puntual:
+                        P = st.number_input("Carga puntual (kg)", 0.0, 50000.0, 5000.0, 500.0)
+                        a = st.number_input("Distancia desde apoyo izquierdo (m)", 0.1, L-0.1, L/2, 0.1)
+                    else:
+                        P = None
+                        a = None
+                
+                if st.button("🔬 Generar Diagramas", type="primary"):
+                    fig = graficar_cortantes_momentos_nilson(L, w, P, a, "simple")
+                    if fig:
+                        st.pyplot(fig)
+                        
+                        # Mostrar valores máximos
+                        x, V, M = calcular_cortantes_momentos_viga_simple(L, w, P, a)
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.metric("Cortante Máximo", f"{max(abs(V)):.1f} kg")
+                        with col2:
+                            st.metric("Momento Máximo", f"{max(abs(M)):.1f} kg·m")
+                        with col3:
+                            st.metric("Luz de la Viga", f"{L} m")
+            
+            elif tipo_viga == "Viga Empotrada":
+                st.markdown("### 🔒 Viga Empotrada")
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    L = st.number_input("Luz de la viga (m)", 1.0, 20.0, 6.0, 0.5, key="empotrada")
+                    w = st.number_input("Carga distribuida (kg/m)", 0.0, 10000.0, 1000.0, 100.0, key="w_empotrada")
+                
+                with col2:
+                    usar_carga_puntual = st.checkbox("Agregar carga puntual", key="puntual_empotrada")
+                    if usar_carga_puntual:
+                        P = st.number_input("Carga puntual (kg)", 0.0, 50000.0, 5000.0, 500.0, key="P_empotrada")
+                        a = st.number_input("Distancia desde apoyo izquierdo (m)", 0.1, L-0.1, L/2, 0.1, key="a_empotrada")
+                    else:
+                        P = None
+                        a = None
+                
+                if st.button("🔬 Generar Diagramas", type="primary", key="btn_empotrada"):
+                    fig = graficar_cortantes_momentos_nilson(L, w, P, a, "empotrada")
+                    if fig:
+                        st.pyplot(fig)
+                        
+                        # Mostrar valores máximos
+                        x, V, M = calcular_cortantes_momentos_viga_empotrada(L, w, P, a)
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.metric("Cortante Máximo", f"{max(abs(V)):.1f} kg")
+                        with col2:
+                            st.metric("Momento Máximo", f"{max(abs(M)):.1f} kg·m")
+                        with col3:
+                            st.metric("Luz de la Viga", f"{L} m")
+            
+            elif tipo_viga == "Viga Continua (2 tramos)":
+                st.markdown("### 🔗 Viga Continua de 2 Tramos")
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    L1 = st.number_input("Luz del primer tramo (m)", 1.0, 15.0, 5.0, 0.5)
+                    L2 = st.number_input("Luz del segundo tramo (m)", 1.0, 15.0, 5.0, 0.5)
+                
+                with col2:
+                    w1 = st.number_input("Carga distribuida tramo 1 (kg/m)", 0.0, 10000.0, 1000.0, 100.0)
+                    w2 = st.number_input("Carga distribuida tramo 2 (kg/m)", 0.0, 10000.0, 1000.0, 100.0)
+                
+                if st.button("🔬 Generar Diagramas", type="primary", key="btn_continua"):
+                    fig = graficar_viga_continua_nilson(L1, L2, w1, w2)
+                    if fig:
+                        st.pyplot(fig)
+                        
+                        # Mostrar valores máximos
+                        x1, V1, M1, x2, V2, M2, R_A, R_B1, R_B2, R_C, M_B = calcular_cortantes_momentos_viga_continua(L1, L2, w1, w2)
+                        
+                        col1, col2, col3, col4 = st.columns(4)
+                        with col1:
+                            st.metric("Cortante Máx. Tramo 1", f"{max(abs(V1)):.1f} kg")
+                        with col2:
+                            st.metric("Cortante Máx. Tramo 2", f"{max(abs(V2)):.1f} kg")
+                        with col3:
+                            st.metric("Momento Máx. Tramo 1", f"{max(abs(M1)):.1f} kg·m")
+                        with col4:
+                            st.metric("Momento Máx. Tramo 2", f"{max(abs(M2)):.1f} kg·m")
+                        
+                        # Mostrar reacciones
+                        st.subheader("📊 Reacciones Calculadas")
+                        col1, col2, col3, col4 = st.columns(4)
+                        with col1:
+                            st.metric("Reacción A", f"{R_A:.1f} kg")
+                        with col2:
+                            st.metric("Reacción B1", f"{R_B1:.1f} kg")
+                        with col3:
+                            st.metric("Reacción B2", f"{R_B2:.1f} kg")
+                        with col4:
+                            st.metric("Reacción C", f"{R_C:.1f} kg")
+            
+            # Información técnica
+            st.markdown("---")
+            st.subheader("📚 Información Técnica - Arthur H. Nilson")
+            st.markdown("""
+            **Referencia:** Diseño de Estructuras de Concreto - Arthur H. Nilson
+            
+            **Fórmulas utilizadas:**
+            - **Viga simplemente apoyada:** Reacciones R = wL/2, Momento máximo M = wL²/8
+            - **Viga empotrada:** Momentos de empotramiento M = ±wL²/12
+            - **Viga continua:** Método de coeficientes para momentos en apoyos
+            
+            **Aplicaciones:**
+            - Diseño de vigas de concreto armado
+            - Análisis de cargas distribuidas y puntuales
+            - Verificación de momentos y cortantes máximos
+            - Diseño de refuerzo según ACI 318
+            """)
+    
+    with tab3:
+        st.subheader("📈 Gráficos Avanzados")
+        st.info("Esta sección incluye gráficos avanzados y visualizaciones 3D (disponible en plan empresarial)")
+        
+        if st.session_state['plan'] == "empresarial":
+            st.success("🏢 Plan Empresarial: Acceso completo a gráficos avanzados")
+            # Aquí se pueden agregar gráficos 3D y visualizaciones avanzadas
+            st.info("🚧 Funcionalidad en desarrollo - Próximamente gráficos 3D y visualizaciones avanzadas")
+        else:
+            st.warning("⚠️ Esta función requiere plan empresarial")
+            st.info("Actualiza a plan empresarial para acceder a gráficos 3D y visualizaciones avanzadas")
 
 elif opcion == "ℹ️ Acerca de":
     st.title("ℹ️ Acerca de CONSORCIO DEJ")
