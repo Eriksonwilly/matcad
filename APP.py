@@ -549,34 +549,35 @@ if st.session_state.authenticated:
         fig_momento.update_yaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
         st.plotly_chart(fig_momento, use_container_width=True)
         
-        # Gráfico combinado estilo McCormac
+        # Gráfico combinado simplificado (sin ejes duales para evitar errores)
         fig_combinado = go.Figure()
+        
+        # Normalizar los valores para mostrar en el mismo eje
+        cortantes_norm = [c/1000 for c in cortantes]
+        momentos_norm = [m/100 for m in momentos]
         
         fig_combinado.add_trace(go.Scatter(
             x=pisos,
-            y=[c/1000 for c in cortantes],
+            y=cortantes_norm,
             mode='lines+markers',
             name='Cortante (ton)',
             line=dict(color='#dc3545', width=3),
-            marker=dict(size=8, color='#dc3545'),
-            yaxis='y'
+            marker=dict(size=8, color='#dc3545')
         ))
         
         fig_combinado.add_trace(go.Scatter(
             x=pisos,
-            y=[m/100 for m in momentos],
+            y=momentos_norm,
             mode='lines+markers',
             name='Momento (ton·m)',
             line=dict(color='#007bff', width=3),
-            marker=dict(size=8, color='#007bff'),
-            yaxis='y2'
+            marker=dict(size=8, color='#007bff')
         ))
         
         fig_combinado.update_layout(
             title="Diagrama Combinado de Cortantes y Momentos (Estilo McCormac)",
             xaxis_title="Nivel",
-            yaxis=dict(title="Cortante (ton)", side="left", titlefont=dict(color="#dc3545")),
-            yaxis2=dict(title="Momento (ton·m)", side="right", overlaying="y", titlefont=dict(color="#007bff")),
+            yaxis_title="Valores Normalizados",
             template="plotly_white",
             height=500,
             showlegend=True,
