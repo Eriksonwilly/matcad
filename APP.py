@@ -14,6 +14,97 @@ from reportlab.lib.units import inch
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 
+# ===== CONFIGURACIÓN PARA MÓVIL/APK =====
+# Optimizaciones para dispositivos móviles
+st.set_page_config(
+    page_title="CONSORCIO DEJ - Análisis Estructural",
+    page_icon="🏗️",
+    layout="wide",
+    initial_sidebar_state="collapsed",  # Sidebar colapsado en móvil
+    menu_items={
+        'Get Help': 'https://consorciodej.com/help',
+        'Report a bug': 'https://consorciodej.com/bug',
+        'About': 'CONSORCIO DEJ v2.0 - Análisis Estructural Profesional'
+    }
+)
+
+# CSS optimizado para móvil
+st.markdown("""
+<style>
+    /* Optimizaciones para móvil */
+    @media (max-width: 768px) {
+        .main-header {
+            padding: 15px !important;
+            font-size: 18px !important;
+        }
+        .metric-card {
+            padding: 15px !important;
+            margin: 10px 0 !important;
+        }
+        .calculate-button {
+            padding: 15px !important;
+            margin: 20px 0 !important;
+        }
+    }
+    
+    .main-header {
+        text-align: center;
+        padding: 25px;
+        background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+        color: #2F2F2F;
+        border-radius: 15px;
+        margin-bottom: 30px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    .metric-card {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        padding: 20px;
+        border-radius: 10px;
+        border-left: 5px solid #1e3c72;
+        margin: 15px 0;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    .success-box {
+        background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+        border: 2px solid #28a745;
+        border-radius: 10px;
+        padding: 15px;
+        margin: 15px 0;
+    }
+    .warning-box {
+        background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+        border: 2px solid #ffc107;
+        border-radius: 10px;
+        padding: 15px;
+        margin: 15px 0;
+    }
+    .error-box {
+        background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+        border: 2px solid #dc3545;
+        border-radius: 10px;
+        padding: 15px;
+        margin: 15px 0;
+    }
+    .calculate-button {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        color: white;
+        padding: 20px;
+        border-radius: 15px;
+        text-align: center;
+        margin: 30px 0;
+        box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+    }
+    .section-header {
+        background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+        color: white;
+        padding: 15px;
+        border-radius: 10px;
+        margin: 20px 0;
+        text-align: center;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 # Importar sistema de pagos simple
 try:
     from simple_payment_system import payment_system
