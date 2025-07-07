@@ -1035,7 +1035,7 @@ def generar_pdf_profesional(datos_proyecto, resultados_analisis):
                 <p><strong>Cortante basal (V):</strong> V = Z×U×C×S×P/R = """ + f"{V/1000:.1f}" + """ ton</p>
                 <p><strong>Período fundamental (T):</strong> T = 0.1×N = """ + f"{T:.2f}" + """ s</p>
                 <p><strong>Coeficiente sísmico (C):</strong> C = 2.5×(1.0/T) = """ + f"{C:.3f}" + """</p>
-                <p><strong>Deriva máxima:</strong> Δmax = 0.007×h = """ + f"{deriva_max*100:.2f}" + """ %</p>
+                <p><strong>Deriva máxima:</strong> Δmax = 0.007×h = """ + f"{0.007 * h_piso * 100:.2f}" + """ %</p>
             </div>
             """, unsafe_allow_html=True)
             
@@ -1859,53 +1859,53 @@ if st.session_state.authenticated:
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # Parámetros de vigas según normas
-                story.append(Paragraph("PARÁMETROS DE DISEÑO PARA VIGAS", ParagraphStyle(name='SubHeading', fontSize=10, textColor=colors.HexColor('#1e3c72'), spaceAfter=8)))
+                # Parámetros de vigas según normas - Comentado para evitar errores
+                # story.append(Paragraph("PARÁMETROS DE DISEÑO PARA VIGAS", ParagraphStyle(name='SubHeading', fontSize=10, textColor=colors.HexColor('#1e3c72'), spaceAfter=8)))
                 
-                parametros_vigas = [
-                    ["Parámetro", "Valor", "Norma E.060", "Norma ACI 318-2025"],
-                    ["Cuantía mínima ρmin", f"{resultados_analisis['rho_min_viga']:.4f}", "Art. 10.5.1: ρmin ≥ 0.8√f'c/fy", "Sección 9.6.1: ρmin ≥ 0.8√f'c/fy"],
-                    ["Cuantía máxima ρmax", f"{resultados_analisis['rho_max_viga']:.4f}", "Art. 10.3.3: ρmax ≤ 0.025", "Sección 9.3.3: ρmax ≤ 0.025"],
-                    ["Cuantía provista ρ", f"{resultados_analisis['rho_provisto']:.4f}", "Art. 10.3: Diseño por flexión", "Sección 9.3: Flexural design"],
-                    ["Factor de reducción φ", f"{resultados_analisis['phi']}", "Art. 9.3.2: φ = 0.9 para flexión", "Sección 9.3: φ = 0.9 for flexure"]
-                ]
+                # parametros_vigas = [
+                #     ["Parámetro", "Valor", "Norma E.060", "Norma ACI 318-2025"],
+                #     ["Cuantía mínima ρmin", f"{resultados_analisis['rho_min_viga']:.4f}", "Art. 10.5.1: ρmin ≥ 0.8√f'c/fy", "Sección 9.6.1: ρmin ≥ 0.8√f'c/fy"],
+                #     ["Cuantía máxima ρmax", f"{resultados_analisis['rho_max_viga']:.4f}", "Art. 10.3.3: ρmax ≤ 0.025", "Sección 9.3.3: ρmax ≤ 0.025"],
+                #     ["Cuantía provista ρ", f"{resultados_analisis['rho_provisto']:.4f}", "Art. 10.3: Diseño por flexión", "Sección 9.3: Flexural design"],
+                #     ["Factor de reducción φ", f"{resultados_analisis['phi']}", "Art. 9.3.2: φ = 0.9 para flexión", "Sección 9.3: φ = 0.9 for flexure"]
+                # ]
                 
-                viga_parametros_table = Table(parametros_vigas, colWidths=[1.5*inch, 1*inch, 1.5*inch, 1.5*inch])
-                viga_parametros_table.setStyle(TableStyle([
-                    ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e3c72')),
-                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                    ('FONTSIZE', (0, 0), (-1, -1), 8),
-                    ('GRID', (0, 0), (-1, -1), 1, colors.black),
-                    ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
-                ]))
-                story.append(viga_parametros_table)
-                story.append(Spacer(1, 8))
+                # viga_parametros_table = Table(parametros_vigas, colWidths=[1.5*inch, 1*inch, 1.5*inch, 1.5*inch])
+                # viga_parametros_table.setStyle(TableStyle([
+                #     ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e3c72')),
+                #     ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                #     ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                #     ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                #     ('FONTSIZE', (0, 0), (-1, -1), 8),
+                #     ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                #     ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+                # ]))
+                # story.append(viga_parametros_table)
+                # story.append(Spacer(1, 8))
                 
-                # Parámetros de columnas según normas
-                story.append(Paragraph("PARÁMETROS DE DISEÑO PARA COLUMNAS", ParagraphStyle(name='SubHeading', fontSize=10, textColor=colors.HexColor('#1e3c72'), spaceAfter=8)))
+                # Parámetros de columnas según normas - Comentado para evitar errores
+                # story.append(Paragraph("PARÁMETROS DE DISEÑO PARA COLUMNAS", ParagraphStyle(name='SubHeading', fontSize=10, textColor=colors.HexColor('#1e3c72'), spaceAfter=8)))
                 
-                parametros_columnas = [
-                    ["Parámetro", "Valor", "Norma E.060", "Norma ACI 318-2025"],
-                    ["Cuantía mínima ρmin", "0.01 (1%)", "Art. 10.9.1: ρmin ≥ 0.01", "Sección 9.6.1: ρmin ≥ 0.01"],
-                    ["Cuantía máxima ρmax", "0.06 (6%)", "Art. 10.9.1: ρmax ≤ 0.06", "Sección 9.6.1: ρmax ≤ 0.06"],
-                    ["Factor de reducción φ", f"{resultados_analisis['phi_col']}", "Art. 9.3.2: φ = 0.65 para compresión", "Sección 9.3: φ = 0.65 for compression"],
-                    ["Resistencia nominal Pn", f"{resultados_analisis['P_u']/resultados_analisis['phi_col']:.1f} ton", "Art. 10.3.6: Pn = Pu/φ", "Sección 9.3.2: Pn = Pu/φ"]
-                ]
+                # parametros_columnas = [
+                #     ["Parámetro", "Valor", "Norma E.060", "Norma ACI 318-2025"],
+                #     ["Cuantía mínima ρmin", "0.01 (1%)", "Art. 10.9.1: ρmin ≥ 0.01", "Sección 9.6.1: ρmin ≥ 0.01"],
+                #     ["Cuantía máxima ρmax", "0.06 (6%)", "Art. 10.9.1: ρmax ≤ 0.06", "Sección 9.6.1: ρmax ≤ 0.06"],
+                #     ["Factor de reducción φ", f"{resultados_analisis['phi_col']}", "Art. 9.3.2: φ = 0.65 para compresión", "Sección 9.3: φ = 0.65 for compression"],
+                #     ["Resistencia nominal Pn", f"{resultados_analisis['P_u']/resultados_analisis['phi_col']:.1f} ton", "Art. 10.3.6: Pn = Pu/φ", "Sección 9.3.2: Pn = Pu/φ"]
+                # ]
                 
-                columna_parametros_table = Table(parametros_columnas, colWidths=[1.5*inch, 1*inch, 1.5*inch, 1.5*inch])
-                columna_parametros_table.setStyle(TableStyle([
-                    ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e3c72')),
-                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                    ('FONTSIZE', (0, 0), (-1, -1), 8),
-                    ('GRID', (0, 0), (-1, -1), 1, colors.black),
-                    ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
-                ]))
-                story.append(columna_parametros_table)
-                story.append(Spacer(1, 10))
+                # columna_parametros_table = Table(parametros_columnas, colWidths=[1.5*inch, 1*inch, 1.5*inch, 1.5*inch])
+                # columna_parametros_table.setStyle(TableStyle([
+                #     ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e3c72')),
+                #     ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                #     ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                #     ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                #     ('FONTSIZE', (0, 0), (-1, -1), 8),
+                #     ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                #     ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+                # ]))
+                # story.append(columna_parametros_table)
+                # story.append(Spacer(1, 10))
                 
                 # Verificaciones de estabilidad con referencias normativas
                 st.markdown("""
@@ -2209,15 +2209,15 @@ if st.session_state.authenticated:
                                 'As_max': As_max,
                                 'phi': phi,
                                 'phi_col': phi_col,
-                                'rho_min_losa': rho_min_losa,
-                                'rho_min_viga': rho_min_viga,
-                                'rho_max_viga': rho_max_viga,
+                                'rho_min_losa': 0.0018,
+                                'rho_min_viga': diseno_flexion['cuantias']['rho_min'],
+                                'rho_max_viga': diseno_flexion['cuantias']['rho_max'],
                                 'rho_provisto': rho_provisto,
                                 'P_servicio': P_servicio/1000,
                                 'P_mayorada': P_mayorada/1000,
                                 'P_edificio': P_edificio/1000,
                                 'cumple_cuantia': cumple_cuantia,
-                                'cumple_columna': Pn <= P0
+                                'cumple_columna': cumple_columna
                             }
                             
                             # Generar reporte en PDF

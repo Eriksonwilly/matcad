@@ -1,0 +1,10 @@
+# System dependencies for Streamlit Cloud
+# These packages will be installed in the system before Python packages
+
+# Fonts for PDF generation
+fonts-liberation
+fontconfig
+
+# Additional system libraries
+libgl1-mesa-glx
+libglib2.0-0 
