@@ -22,8 +22,8 @@ st.markdown("""
     .main-header {
         text-align: center;
         padding: 25px;
-        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-        color: white;
+        background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+        color: #2F2F2F;
         border-radius: 15px;
         margin-bottom: 30px;
         box-shadow: 0 4px 15px rgba(0,0,0,0.1);
@@ -162,6 +162,17 @@ if st.session_state.authenticated:
         st.markdown("---")
         st.header("📊 Datos del Proyecto")
         
+        # BOTÓN ÚNICO DE CÁLCULO - UBICADO DESPUÉS DE PARÁMETROS SÍSMICOS
+        st.markdown("""
+        <div class="calculate-button">
+            <h2>🚀 CALCULAR TODO EL PROYECTO</h2>
+            <p>Predimensionamiento • Análisis Sísmico • Diseño Estructural • Gráficas • Reporte</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Botón de cálculo principal
+        calcular_todo = st.button("⚡ EJECUTAR ANÁLISIS COMPLETO", type="primary", use_container_width=True)
+        
         # Materiales
         st.subheader("🏗️ Materiales")
         f_c = st.number_input("Resistencia del concreto f'c (kg/cm²)", 
@@ -196,55 +207,47 @@ if st.session_state.authenticated:
         factor_importancia = st.number_input("Factor de Importancia (U)", 
                                            min_value=1.0, max_value=1.5, value=1.0, step=0.1)
     
-    # Área principal
-    st.markdown("""
-    <div class="section-header">
-        <h2>📋 Resumen de Datos de Entrada</h2>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Mostrar datos de entrada
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
+    # Área principal - Solo mostrar si se presiona el botón
+    if calcular_todo:
+        st.success("✅ ¡Iniciando análisis estructural completo!")
+        
+        # Mostrar datos de entrada
         st.markdown("""
-        <div class="metric-card">
-            <h4>🏗️ Materiales</h4>
-            <p><strong>f'c:</strong> """ + str(f_c) + """ kg/cm²</p>
-            <p><strong>fy:</strong> """ + str(f_y) + """ kg/cm²</p>
+        <div class="section-header">
+            <h2>📋 Resumen de Datos de Entrada</h2>
         </div>
         """, unsafe_allow_html=True)
-    
-    with col2:
-        st.markdown("""
-        <div class="metric-card">
-            <h4>📐 Geometría</h4>
-            <p><strong>Luz:</strong> """ + str(L_viga) + """ m</p>
-            <p><strong>Altura piso:</strong> """ + str(h_piso) + """ m</p>
-            <p><strong>Pisos:</strong> """ + str(num_pisos) + """</p>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with col3:
-        st.markdown("""
-        <div class="metric-card">
-            <h4>🌎 Sísmicos</h4>
-            <p><strong>Zona:</strong> """ + zona_sismica + """</p>
-            <p><strong>Suelo:</strong> """ + tipo_suelo + """</p>
-            <p><strong>Sistema:</strong> """ + tipo_estructura + """</p>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    # BOTÓN ÚNICO DE CÁLCULO
-    st.markdown("""
-    <div class="calculate-button">
-        <h2>🚀 CALCULAR TODO EL PROYECTO</h2>
-        <p>Predimensionamiento • Análisis Sísmico • Diseño Estructural • Gráficas • Reporte</p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Botón de cálculo
-    if st.button("⚡ EJECUTAR ANÁLISIS COMPLETO", type="primary", use_container_width=True):
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.markdown("""
+            <div class="metric-card">
+                <h4>🏗️ Materiales</h4>
+                <p><strong>f'c:</strong> """ + str(f_c) + """ kg/cm²</p>
+                <p><strong>fy:</strong> """ + str(f_y) + """ kg/cm²</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col2:
+            st.markdown("""
+            <div class="metric-card">
+                <h4>📐 Geometría</h4>
+                <p><strong>Luz:</strong> """ + str(L_viga) + """ m</p>
+                <p><strong>Altura piso:</strong> """ + str(h_piso) + """ m</p>
+                <p><strong>Pisos:</strong> """ + str(num_pisos) + """</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col3:
+            st.markdown("""
+            <div class="metric-card">
+                <h4>🌎 Sísmicos</h4>
+                <p><strong>Zona:</strong> """ + zona_sismica + """</p>
+                <p><strong>Suelo:</strong> """ + tipo_suelo + """</p>
+                <p><strong>Sistema:</strong> """ + tipo_estructura + """</p>
+            </div>
+            """, unsafe_allow_html=True)
         st.success("✅ ¡Iniciando análisis estructural completo!")
         
         # Calcular módulo de elasticidad
@@ -665,9 +668,19 @@ if st.session_state.authenticated:
         
         st.balloons()
         st.success("🎉 ¡Análisis estructural completado exitosamente!")
-        
+    
     else:
-        st.info("💡 Ingresa los datos en el sidebar y presiona el botón para ejecutar el análisis completo.")
+        # Mostrar mensaje cuando no se ha presionado el botón
+        st.markdown("""
+        <div style="text-align: center; padding: 50px; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-radius: 15px; margin: 50px 0;">
+            <h2 style="color: #1e3c72;">🏗️ CONSORCIO DEJ</h2>
+            <p style="font-size: 18px; color: #666;">Software de Análisis Estructural Profesional</p>
+            <p style="font-size: 16px; color: #888;">Ingresa los datos en el sidebar y presiona el botón "EJECUTAR ANÁLISIS COMPLETO" para comenzar</p>
+            <div style="margin-top: 30px;">
+                <span style="background: #28a745; color: white; padding: 10px 20px; border-radius: 8px; font-weight: bold;">⚡ LISTO PARA CALCULAR</span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
     
     # Footer profesional
     st.markdown("---")
