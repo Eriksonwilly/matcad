@@ -1,0 +1,16 @@
+{
+  "admin@consorciodej.com": {
+    "email": "admin@consorciodej.com",
+    "password": "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9",
+    "name": "Administrador",
+    "plan": "empresarial",
+    "created_at": "2025-07-06T23:07:53.857781"
+  },
+  "demo@consorciodej.com": {
+    "email": "demo@consorciodej.com",
+    "password": "d3ad9315b7be5dd53b31a273b3b3aba5defe700808305aa16a3062b76658a791",
+    "name": "Usuario Demo",
+    "plan": "basico",
+    "created_at": "2025-07-06T23:07:53.857807"
+  }
+}

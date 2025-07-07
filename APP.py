@@ -105,13 +105,8 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Importar sistema de pagos simple
-try:
-    from simple_payment_system import payment_system
-    PAYMENT_SYSTEM_AVAILABLE = True
-except ImportError:
-    PAYMENT_SYSTEM_AVAILABLE = False
-    st.warning("⚠️ Sistema de pagos no disponible. Usando modo demo.")
+# Sistema de pagos simplificado
+PAYMENT_SYSTEM_AVAILABLE = False
 
 # ===== FUNCIONES DE CÁLCULO SEGÚN ACI 318-2025 =====
 
@@ -505,62 +500,8 @@ def get_user_plan(username):
 def show_payment_form(plan):
     """Mostrar formulario de pago"""
     st.subheader(f"💳 Pago - Plan {plan.title()}")
-    
-    # Verificar si hay usuario logueado
-    if 'username' not in st.session_state:
-        st.warning("⚠️ Debes iniciar sesión o registrarte primero")
-        st.info("📝 Ve a la pestaña 'Registrarse' para crear una cuenta")
-        return
-    
-    payment_method = st.selectbox(
-        "Método de pago",
-        ["yape", "plin", "paypal", "transferencia", "efectivo"],
-        format_func=lambda x: {
-            "yape": "📱 Yape (Más Rápido)",
-            "plin": "📱 PLIN",
-            "paypal": "💳 PayPal",
-            "transferencia": "🏦 Transferencia Bancaria", 
-            "efectivo": "💵 Pago en Efectivo"
-        }[x]
-    )
-    
-    if st.button("Procesar Pago", type="primary"):
-        if PAYMENT_SYSTEM_AVAILABLE:
-            try:
-                # Usar email del usuario actual
-                user_email = st.session_state.get('user_email', 'demo@consorciodej.com')
-                result = payment_system.upgrade_plan(user_email, plan, payment_method)
-                
-                if result["success"]:
-                    st.success("✅ Pago procesado correctamente")
-                    st.info("📋 Instrucciones de pago:")
-                    st.text(result["instructions"])
-                    
-                    # Mostrar información adicional
-                    st.info("📱 Envía el comprobante de pago a WhatsApp: +51 999 888 777")
-                    
-                    # Verificar si fue confirmado automáticamente
-                    if result.get("auto_confirmed"):
-                        st.success("🎉 ¡Plan activado inmediatamente!")
-                        st.info("✅ Pago confirmado automáticamente")
-                        
-                        # Actualizar plan en session state
-                        st.session_state['plan'] = plan
-                        
-                        # Botón para continuar con acceso completo
-                        if st.button("🚀 Continuar con Acceso Completo", key="continue_full_access"):
-                            st.rerun()
-                    else:
-                        st.info("⏰ Activación en 2 horas máximo")
-                        st.info("🔄 Recarga la página después de 2 horas")
-                else:
-                    st.error(f"❌ Error: {result['message']}")
-            except Exception as e:
-                st.error(f"❌ Error en el sistema de pagos: {str(e)}")
-                st.info("🔄 Intenta nuevamente o contacta soporte")
-        else:
-            st.error("❌ Sistema de pagos no disponible")
-            st.info("🔧 Contacta al administrador para activar el sistema")
+    st.info("💰 Sistema de pagos en desarrollo")
+    st.info("📱 Contacta: +51 999 888 777")
 
 def show_pricing_page():
     """Mostrar página de precios y planes"""
@@ -1146,17 +1087,6 @@ if not st.session_state.authenticated:
                         st.session_state.plan = "basico"
                         st.success("✅ ¡Bienvenido al modo demo!")
                         st.rerun()
-                    elif PAYMENT_SYSTEM_AVAILABLE:
-                        # Sistema real de pagos
-                        result = payment_system.login_user(username, password)
-                        if result["success"]:
-                            st.session_state.authenticated = True
-                            st.session_state.username = result["user"]["name"]
-                            st.session_state.plan = result["user"]["plan"]
-                            st.success(f"✅ ¡Bienvenido, {result['user']['name']}!")
-                            st.rerun()
-                        else:
-                            st.error(f"❌ {result['message']}")
                     else:
                         st.error("❌ Sistema de pagos no disponible. Usa credenciales de demo.")
             
@@ -1184,26 +1114,8 @@ if not st.session_state.authenticated:
                 elif len(new_password) < 6:
                     st.error("❌ La contraseña debe tener al menos 6 caracteres")
                 else:
-                    if PAYMENT_SYSTEM_AVAILABLE:
-                        result = payment_system.register_user(new_email, new_password, new_name)
-                        if result["success"]:
-                            st.success("✅ " + result["message"])
-                            st.info("🔐 Ahora puedes iniciar sesión y actualizar tu plan")
-                            
-                            # Auto-login después del registro
-                            login_result = payment_system.login_user(new_email, new_password)
-                            if login_result["success"]:
-                                st.session_state.authenticated = True
-                                st.session_state.username = login_result["user"]["name"]
-                                st.session_state.plan = login_result["user"]["plan"]
-                                st.success(f"🎉 ¡Bienvenido, {login_result['user']['name']}!")
-                                st.info("💰 Ve a 'Planes y Precios' para actualizar tu plan")
-                                st.rerun()
-                        else:
-                            st.error("❌ " + result["message"])
-                    else:
-                        st.success("✅ Registro simulado exitoso")
-                        st.info("🔑 Usa las credenciales de demo para acceder")
+                    st.success("✅ Registro simulado exitoso")
+                    st.info("🔑 Usa las credenciales de demo para acceder")
     
     with tab3:
         show_pricing_page()
@@ -1212,20 +1124,7 @@ if not st.session_state.authenticated:
 
 # Función para actualizar plan del usuario
 def update_user_plan():
-    """Actualizar plan del usuario desde el sistema de pagos"""
-    if PAYMENT_SYSTEM_AVAILABLE and 'user_email' in st.session_state:
-        try:
-            user_email = st.session_state['user_email']
-            if user_email and user_email not in ['admin', 'demo']:
-                real_plan = payment_system.get_user_plan(user_email)
-                current_plan = real_plan.get('plan', 'basico')
-                
-                # Actualizar session state si el plan cambió
-                if st.session_state.get('plan') != current_plan:
-                    st.session_state['plan'] = current_plan
-                    return True
-        except Exception as e:
-            pass
+    """Actualizar plan del usuario"""
     return False
 
 # Aplicación principal
