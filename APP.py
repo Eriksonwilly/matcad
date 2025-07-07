@@ -178,94 +178,259 @@ elif opcion == "📄 Reporte":
 
 elif opcion == "📚 Fórmulas de Diseño Estructural":
     st.header("📚 Fórmulas de Diseño Estructural")
+    st.info("Fórmulas clave según ACI 318-2025, E.060, Nilson, McCormac, Hibbeler y Antonio Blanco.")
+    
+    # Pestañas para organizar las fórmulas
+    tab1, tab2, tab3, tab4 = st.tabs(["🏗️ Propiedades Materiales", "📐 Diseño por Flexión", "🔧 Diseño por Cortante", "🏢 Columnas y Losas"])
+    
+    with tab1:
+        st.subheader("🏗️ Propiedades del Material")
+        st.markdown("""
+        ### Concreto (ACI 318-2025 - Capítulo 19)
+        - **Resistencia a compresión (f'c):** \( f'_c \) (kg/cm²)  
+          *(Valores típicos: 210, 280, 350 kg/cm²)*
+        
+        - **Módulo de elasticidad (Ec):** \( E_c = 15000 \sqrt{f'_c} \) (kg/cm²)
+        
+        - **Deformación última del concreto (εcu):** \( \varepsilon_{cu} = 0.003 \) *(Para diseño por flexión)*
+        
+        - **Resistencia a tracción por flexión (fr):** \( f_r = 2 \sqrt{f'_c} \) (kg/cm²)
+        
+        ### Acero de Refuerzo (ACI 318-2025 - Capítulo 20)
+        - **Esfuerzo de fluencia (fy):** \( f_y \) (kg/cm²)  
+          *(Valores típicos: 4200, 5000 kg/cm²)*
+        
+        - **Módulo de elasticidad (Es):** \( E_s = 2,000,000 \) (kg/cm²)
+        
+        - **Deformación de fluencia (εy):** \( \varepsilon_y = \frac{f_y}{E_s} \)
+        """, unsafe_allow_html=True)
+        
+        # Fórmulas en LaTeX
+        st.latex(r"E_c = 15000 \sqrt{f'_c} \text{ (kg/cm²)}")
+        st.latex(r"\varepsilon_{cu} = 0.003")
+        st.latex(r"f_r = 2 \sqrt{f'_c} \text{ (kg/cm²)}")
+        st.latex(r"E_s = 2,000,000 \text{ (kg/cm²)}")
+        st.latex(r"\varepsilon_y = \frac{f_y}{E_s}")
+    
+    with tab2:
+        st.subheader("📐 Diseño por Flexión (ACI 318-2025 - Capítulo 9)")
+        st.markdown("""
+        - **Momento último (Mu):** \( M_u = 1.2M_D + 1.6M_L \) *(Combinación de carga mayorada)*
+        
+        - **Cuantía de acero (ρ):** \( \rho = \frac{A_s}{bd} \)
+        
+        - **Cuantía balanceada (ρb):** \( \rho_b = 0.85\beta_1 \frac{f'_c}{f_y} \left( \frac{6000}{6000+f_y} \right) \)  
+          *(β₁ = 0.85 si f'c ≤ 280 kg/cm², disminuye 0.05 por cada 70 kg/cm² adicionales)*
+        
+        - **Cuantía mínima (ρmin):** \( \rho_{min} = \max\left( \frac{0.8\sqrt{f'_c}}{f_y}, \frac{14}{f_y} \right) \)
+        
+        - **Cuantía máxima (ρmax):** \( \rho_{max} = 0.75\rho_b \) *(Para evitar falla frágil)*
+        
+        - **Profundidad del bloque equivalente (a):** \( a = \frac{A_s f_y}{0.85f'_c b} \)
+        
+        - **Momento resistente (φMn):** \( \phi M_n = \phi A_s f_y \left(d - \frac{a}{2}\right) \)  
+          *(φ = 0.9 para flexión)*
+        """, unsafe_allow_html=True)
+        
+        # Fórmulas en LaTeX
+        st.latex(r"M_u = 1.2M_D + 1.6M_L")
+        st.latex(r"\rho = \frac{A_s}{bd}")
+        st.latex(r"\rho_b = 0.85\beta_1 \frac{f'_c}{f_y} \left( \frac{6000}{6000+f_y} \right)")
+        st.latex(r"\rho_{min} = \max\left( \frac{0.8\sqrt{f'_c}}{f_y}, \frac{14}{f_y} \right)")
+        st.latex(r"\rho_{max} = 0.75\rho_b")
+        st.latex(r"a = \frac{A_s f_y}{0.85f'_c b}")
+        st.latex(r"\phi M_n = \phi A_s f_y \left(d - \frac{a}{2}\right)")
+    
+    with tab3:
+        st.subheader("🔧 Diseño por Cortante (ACI 318-2025 - Capítulo 22)")
+        st.markdown("""
+        - **Cortante último (Vu):** \( V_u = 1.2V_D + 1.6V_L \)
+        
+        - **Resistencia del concreto (Vc):** \( V_c = 0.53\sqrt{f'_c} b_w d \) (kg)
+        
+        - **Resistencia del acero (Vs):** \( V_s = \frac{A_v f_y d}{s} \)  
+          *(Av = Área de estribos, s = separación)*
+        
+        - **Cortante máximo (Vs máx):** \( V_{s,max} = 2.1\sqrt{f'_c} b_w d \) *(Límite superior)*
+        
+        - **Separación máxima de estribos (smax):** \( s_{max} = \min\left( \frac{d}{2}, 60 \text{ cm} \right) \)
+        """, unsafe_allow_html=True)
+        
+        # Fórmulas en LaTeX
+        st.latex(r"V_u = 1.2V_D + 1.6V_L")
+        st.latex(r"V_c = 0.53\sqrt{f'_c} b_w d \text{ (kg)}")
+        st.latex(r"V_s = \frac{A_v f_y d}{s}")
+        st.latex(r"V_{s,max} = 2.1\sqrt{f'_c} b_w d")
+        st.latex(r"s_{max} = \min\left( \frac{d}{2}, 60 \text{ cm} \right)")
+    
+    with tab4:
+        st.subheader("🏢 Diseño de Columnas y Losas")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("""
+            ### Columnas (ACI 318-2025 - Capítulo 10)
+            - **Carga axial última (Pu):** \( P_u = 1.2P_D + 1.6P_L \)
+            
+            - **Resistencia nominal (Pn):** \( P_n = 0.80[0.85f'_c(A_g - A_{st}) + f_y A_{st}] \)  
+              *(φ = 0.65 para columnas con estribos, 0.75 para espirales)*
+            
+            - **Relación de esbeltez:** \( \frac{kL}{r} \leq 22 \) *(Para columnas arriostradas)*
+            """, unsafe_allow_html=True)
+            
+            st.latex(r"P_u = 1.2P_D + 1.6P_L")
+            st.latex(r"P_n = 0.80[0.85f'_c(A_g - A_{st}) + f_y A_{st}]")
+            st.latex(r"\frac{kL}{r} \leq 22")
+        
+        with col2:
+            st.markdown("""
+            ### Losas (ACI 318-2025 - Capítulo 8 & E.060)
+            - **Espesor mínimo de losa aligerada:** \( h_{min} = \frac{L}{25} \) *(No menor a 17 cm)*
+            
+            - **Refuerzo mínimo en losas:** \( \rho_{min} = 0.0018 \) *(Para fy = 4200 kg/cm²)*
+            
+            - **Separación máxima del acero:** \( s_{max} = \min(3h, 45 \text{ cm}) \)
+            """, unsafe_allow_html=True)
+            
+            st.latex(r"h_{min} = \frac{L}{25}")
+            st.latex(r"\rho_{min} = 0.0018")
+            st.latex(r"s_{max} = \min(3h, 45 \text{ cm})")
+    
+    # Sección adicional para análisis sísmico
+    st.markdown("---")
+    st.subheader("🌍 Análisis Sísmico (E.030 & ACI 318-2025 - Capítulo 18)")
+    st.markdown("""
+    - **Cortante basal (V):** \( V = \frac{ZUCS}{R}P \)  
+      *(Z = factor de zona, U = importancia, C = coeficiente sísmico, S = suelo, R = reducción)*
+    
+    - **Deriva máxima permitida:** \( \Delta_{max} = 0.007h \) *(Para edificios regulares)*
+    """, unsafe_allow_html=True)
+    
+    st.latex(r"V = \frac{ZUCS}{R}P")
+    st.latex(r"\Delta_{max} = 0.007h")
+    
+    # Conclusiones
+    st.markdown("---")
+    st.subheader("📋 Conclusiones")
+    st.markdown("""
+    - **ACI 318-2025** es más estricto en cuantías mínimas y máximas.
+    - **E.060** sigue principios similares pero con ajustes para condiciones locales.
+    - **McCormac y Nilson** recomiendan ductilidad en zonas sísmicas (ρ ≤ 0.025).
+    - **Hibbeler** enfatiza el análisis estructural previo al diseño.
+    
+    Este resumen integra los conceptos clave para el diseño seguro de estructuras de concreto armado según las normas internacionales y los libros de referencia. 🏗️
+    """, unsafe_allow_html=True)
+    
+    # Fórmulas originales (mantener compatibilidad)
+    st.markdown("---")
+    st.subheader("📚 Fórmulas Clásicas (ACI 318-19)")
     st.info("Fórmulas clave según ACI 318-19, Nilson, McCormac, Hibbeler y Antonio Blanco.")
     st.markdown("""
-### 1. Propiedades del Concreto y Acero
-- **Resistencia a la compresión del concreto (f'c):** Resistencia característica a 28 días (MPa o kg/cm²).
-- **Módulo de elasticidad del concreto (Ec):**
-  
-  \( E_c = 4700 \sqrt{f'_c} \) (MPa)  
-  (ACI 318-19, Sección 19.2.2.1)
-- **Módulo de elasticidad del acero (Es):**
-  
-  \( E_s = 200,000 \) MPa (o \(2 \times 10^6\) kg/cm²)
-- **Deformación máxima del concreto en compresión (εcu):**
-  
-  \( \varepsilon_{cu} = 0.003 \) (ACI 318-19, Sección 22.2.2.1)
+    ### 1. Propiedades del Concreto y Acero
+    - **Resistencia a la compresión del concreto (f'c):** Resistencia característica a 28 días (MPa o kg/cm²).
+    - **Módulo de elasticidad del concreto (Ec):**
+      
+      \( E_c = 4700 \sqrt{f'_c} \) (MPa)  
+      (ACI 318-19, Sección 19.2.2.1)
+    - **Módulo de elasticidad del acero (Es):**
+      
+      \( E_s = 200,000 \) MPa (o \(2 \times 10^6\) kg/cm²)
+    - **Deformación máxima del concreto en compresión (εcu):**
+      
+      \( \varepsilon_{cu} = 0.003 \) (ACI 318-19, Sección 22.2.2.1)
 
-### 2. Flexión en Vigas (Diseño por Momento)
-- **Cuantía balanceada (ρb):**
-  
-  \( \rho_b = \frac{0.85 \beta_1 f'_c}{f_y} \left( \frac{600}{600+f_y} \right) \)
-  
-  \( \beta_1 = 0.85 \) si \(f'_c \leq 28\) MPa; se reduce en 0.05 por cada 7 MPa arriba de 28 MPa.
-- **Cuantía máxima (ρmax):**
-  
-  \( \rho_{max} = 0.75 \rho_b \) (ACI 318-19, Sección 9.3.3)
-- **Momento resistente nominal (Mn):**
-  
-  \( M_n = A_s f_y (d - \frac{a}{2}) \)
-- **Profundidad del bloque equivalente de esfuerzos (a):**
-  
-  \( a = \frac{A_s f_y}{0.85 f'_c b} \)
-- **Momento último (Mu):**
-  
-  \( M_u = \phi M_n \); \(\phi = 0.90\) para flexión
+    ### 2. Flexión en Vigas (Diseño por Momento)
+    - **Cuantía balanceada (ρb):**
+      
+      \( \rho_b = \frac{0.85 \beta_1 f'_c}{f_y} \left( \frac{600}{600+f_y} \right) \)
+      
+      \( \beta_1 = 0.85 \) si \(f'_c \leq 28\) MPa; se reduce en 0.05 por cada 7 MPa arriba de 28 MPa.
+    - **Cuantía máxima (ρmax):**
+      
+      \( \rho_{max} = 0.75 \rho_b \) (ACI 318-19, Sección 9.3.3)
+    - **Momento resistente nominal (Mn):**
+      
+      \( M_n = A_s f_y (d - \frac{a}{2}) \)
+    - **Profundidad del bloque equivalente de esfuerzos (a):**
+      
+      \( a = \frac{A_s f_y}{0.85 f'_c b} \)
+    - **Momento último (Mu):**
+      
+      \( M_u = \phi M_n \); \(\phi = 0.90\) para flexión
 
-### 3. Corte en Vigas
-- **Resistencia al corte del concreto (Vc):**
-  
-  \( V_c = 0.17 \sqrt{f'_c} b_w d \) (MPa) (ACI 318-19, Sección 22.5.5.1)
-- **Resistencia del acero de estribos (Vs):**
-  
-  \( V_s = \frac{A_v f_y d}{s} \)
-- **Corte último (Vu):**
-  
-  \( V_u \leq \phi (V_c + V_s) \); \(\phi = 0.75\) para corte
-- **Separación máxima de estribos:**
-  
-  \( s_{max} = \begin{cases} 2d & \text{si } V_s \leq 0.33 \sqrt{f'_c} b_w d \\ 4d & \text{si } V_s > 0.33 \sqrt{f'_c} b_w d \end{cases} \)
+    ### 3. Corte en Vigas
+    - **Resistencia al corte del concreto (Vc):**
+      
+      \( V_c = 0.17 \sqrt{f'_c} b_w d \) (MPa) (ACI 318-19, Sección 22.5.5.1)
+    - **Resistencia del acero de estribos (Vs):**
+      
+      \( V_s = \frac{A_v f_y d}{s} \)
+    - **Corte último (Vu):**
+      
+      \( V_u \leq \phi (V_c + V_s) \); \(\phi = 0.75\) para corte
+    - **Separación máxima de estribos:**
+      
+      \( s_{max} = \begin{cases} 2d & \text{si } V_s \leq 0.33 \sqrt{f'_c} b_w d \\ 4d & \text{si } V_s > 0.33 \sqrt{f'_c} b_w d \end{cases} \)
 
-### 4. Columnas (Compresión y Flexo-Compresión)
-- **Carga axial nominal (Pn):**
-  
-  \( P_n = 0.85 f'_c (A_g - A_{st}) + f_y A_{st} \) (Columna corta)
-- **Carga axial última (Pu):**
-  
-  \( P_u = \phi P_n \); \(\phi = 0.65\) (con estribos), \(0.75\) (espiral)
-- **Efectos de esbeltez (Klu/r):**
-  
-  Si \( \frac{Kl_u}{r} > 22 \), considerar efectos de segundo orden (ACI 318-19, Sección 6.2.5).
+    ### 4. Columnas (Compresión y Flexo-Compresión)
+    - **Carga axial nominal (Pn):**
+      
+      \( P_n = 0.85 f'_c (A_g - A_{st}) + f_y A_{st} \) (Columna corta)
+    - **Carga axial última (Pu):**
+      
+      \( P_u = \phi P_n \); \(\phi = 0.65\) (con estribos), \(0.75\) (espiral)
+    - **Efectos de esbeltez (Klu/r):**
+      
+      Si \( \frac{Kl_u}{r} > 22 \), considerar efectos de segundo orden (ACI 318-19, Sección 6.2.5).
 
-### 5. Losas Armadas en una Dirección
-- **Espesor mínimo (h):**
-  
-  \( h = \frac{L}{20} \) (simplemente apoyada) (ACI 318-19, Tabla 7.3.1.1)
-- **Refuerzo mínimo por temperatura:**
-  
-  \( A_{s,min} = 0.0018 b h \) (para \(f_y = 420\) MPa)
+    ### 5. Losas Armadas en una Dirección
+    - **Espesor mínimo (h):**
+      
+      \( h = \frac{L}{20} \) (simplemente apoyada) (ACI 318-19, Tabla 7.3.1.1)
+    - **Refuerzo mínimo por temperatura:**
+      
+      \( A_{s,min} = 0.0018 b h \) (para \(f_y = 420\) MPa)
 
-### 6. Adherencia y Anclaje
-- **Longitud de desarrollo (ld) para barras en tracción:**
-  
-  \( l_d = \left( \frac{f_y \psi_t \psi_e}{2.1 \lambda \sqrt{f'_c}} \right) d_b \) (ACI 318-19, Sección 25.4.2)
-  
-  \(\psi_t, \psi_e\): Factores por ubicación y recubrimiento.
+    ### 6. Adherencia y Anclaje
+    - **Longitud de desarrollo (ld) para barras en tracción:**
+      
+      \( l_d = \left( \frac{f_y \psi_t \psi_e}{2.1 \lambda \sqrt{f'_c}} \right) d_b \) (ACI 318-19, Sección 25.4.2)
+      
+      \(\psi_t, \psi_e\): Factores por ubicación y recubrimiento.
 
-### 7. Servicio (Agrietamiento y Deflexión)
-- **Control de agrietamiento:**
-  
-  \( w = 0.076 \beta_s \frac{d_c^3}{A} \) (MPa) (ACI 318-19, Sección 24.3)
-  
-  \(w\): Ancho de grieta, \(d_c\): Recubrimiento, \(A\): Área de concreto alrededor de la barra.
+    ### 7. Servicio (Agrietamiento y Deflexión)
+    - **Control de agrietamiento:**
+      
+      \( w = 0.076 \beta_s \frac{d_c^3}{A} \) (MPa) (ACI 318-19, Sección 24.3)
+      
+      \(w\): Ancho de grieta, \(d_c\): Recubrimiento, \(A\): Área de concreto alrededor de la barra.
 
----
-**Fuentes:**
-- ACI 318-19: Requisitos generales y fórmulas base.
-- McCormac & Nilson: Detalles de diseño en flexión, corte y columnas.
-- Hibbeler: Análisis estructural previo al diseño.
-- Antonio Blanco: Aplicaciones en edificaciones.
-""", unsafe_allow_html=True)
+    ---
+    **Fuentes:**
+    - ACI 318-19: Requisitos generales y fórmulas base.
+    - McCormac & Nilson: Detalles de diseño en flexión, corte y columnas.
+    - Hibbeler: Análisis estructural previo al diseño.
+    - Antonio Blanco: Aplicaciones en edificaciones.
+    """, unsafe_allow_html=True)
+    st.latex(r"E_c = 4700 \, \sqrt{f'_c} ")
+    st.latex(r"E_s = 200000 \, \text{MPa}")
+    st.latex(r"\varepsilon_{cu} = 0.003")
+    st.latex(r"\rho_b = \frac{0.85 \beta_1 f'_c}{f_y} \left( \frac{600}{600+f_y} \right)")
+    st.latex(r"\rho_{max} = 0.75 \rho_b")
+    st.latex(r"M_n = A_s f_y (d - \frac{a}{2})")
+    st.latex(r"a = \frac{A_s f_y}{0.85 f'_c b}")
+    st.latex(r"M_u = \phi M_n; \, \phi = 0.90")
+    st.latex(r"V_c = 0.17 \sqrt{f'_c} b_w d")
+    st.latex(r"V_s = \frac{A_v f_y d}{s}")
+    st.latex(r"V_u \leq \phi (V_c + V_s); \, \phi = 0.75")
+    st.latex(r"s_{max} = \begin{cases} 2d & V_s \leq 0.33 \sqrt{f'_c} b_w d \\ 4d & V_s > 0.33 \sqrt{f'_c} b_w d \end{cases}")
+    st.latex(r"P_n = 0.85 f'_c (A_g - A_{st}) + f_y A_{st}")
+    st.latex(r"P_u = \phi P_n; \, \phi = 0.65, 0.75")
+    st.latex(r"h = \frac{L}{20}")
+    st.latex(r"A_{s,min} = 0.0018 b h")
+    st.latex(r"l_d = \left( \frac{f_y \psi_t \psi_e}{2.1 \lambda \sqrt{f'_c}} \right) d_b")
+    st.latex(r"w = 0.076 \beta_s \frac{d_c^3}{A}")
     st.latex(r"E_c = 4700 \, \sqrt{f'_c} ")
     st.latex(r"E_s = 200000 \, \text{MPa}")
     st.latex(r"\varepsilon_{cu} = 0.003")
