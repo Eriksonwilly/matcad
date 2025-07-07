@@ -952,608 +952,608 @@ if st.session_state.authenticated:
             
             # Área principal - Solo mostrar si se presiona el botón
             if st.session_state.get('calcular_todo', False):
-        # Verificar plan del usuario
-        plan = st.session_state.get('plan', 'basico')
-        if plan == "basico":
-            st.warning("⚠️ El análisis completo requiere plan premium o empresarial")
-            st.info("Plan básico incluye: Cálculos básicos, resultados simples")
-            st.info("Plan premium incluye: Análisis completo, reportes detallados, gráficos avanzados")
-            
-            # Mostrar botón para actualizar plan
-            col1, col2, col3 = st.columns([1, 2, 1])
-            with col2:
-                if st.button("⭐ Actualizar a Premium", type="primary"):
-                    st.session_state['plan'] = "premium"
-                    st.success("✅ Plan premium activado")
-                    st.rerun()
-            st.stop()
-        
-        st.success("✅ ¡Iniciando análisis estructural completo!")
-        
-        # Obtener datos del sidebar desde session state
-        f_c = st.session_state.get('f_c', 210)
-        f_y = st.session_state.get('f_y', 4200)
-        L_viga = st.session_state.get('L_viga', 6.0)
-        h_piso = st.session_state.get('h_piso', 3.0)
-        num_pisos = st.session_state.get('num_pisos', 15)
-        num_vanos = st.session_state.get('num_vanos', 3)
-        CM = st.session_state.get('CM', 150)
-        CV = st.session_state.get('CV', 200)
-        zona_sismica = st.session_state.get('zona_sismica', 'Z3')
-        tipo_suelo = st.session_state.get('tipo_suelo', 'S2')
-        tipo_estructura = st.session_state.get('tipo_estructura', 'Pórticos')
-        factor_importancia = st.session_state.get('factor_importancia', 1.0)
-        
-        # Mostrar datos de entrada
-        st.markdown("""
-        <div class="section-header">
-            <h2>📋 Resumen de Datos de Entrada</h2>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            st.markdown(f"""
-            <div class="metric-card">
-                <h4>🏗️ Materiales</h4>
-                <p><strong>f'c:</strong> {f_c} kg/cm²</p>
-                <p><strong>fy:</strong> {f_y} kg/cm²</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col2:
-            st.markdown(f"""
-            <div class="metric-card">
-                <h4>📐 Geometría</h4>
-                <p><strong>Luz:</strong> {L_viga} m</p>
-                <p><strong>Altura piso:</strong> {h_piso} m</p>
-                <p><strong>Pisos:</strong> {num_pisos}</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col3:
-            st.markdown(f"""
-            <div class="metric-card">
-                <h4>🌎 Sísmicos</h4>
-                <p><strong>Zona:</strong> {zona_sismica}</p>
-                <p><strong>Suelo:</strong> {tipo_suelo}</p>
-                <p><strong>Sistema:</strong> {tipo_estructura}</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        # Calcular módulo de elasticidad
-        E = 15000 * sqrt(f_c)
-        
-        # Factores sísmicos
-        factores_Z = {"Z1": 0.10, "Z2": 0.20, "Z3": 0.30, "Z4": 0.45}
-        Z = factores_Z[zona_sismica]
-        
-        factores_R = {"Pórticos": 8.0, "Muros Estructurales": 6.0, "Dual": 7.0}
-        R = factores_R[tipo_estructura]
-        
-        factores_S = {"S1": 1.0, "S2": 1.2, "S3": 1.4, "S4": 1.6}
-        S = factores_S[tipo_suelo]
-        
-        # === PREDIMENSIONAMIENTO ===
-        st.markdown("""
-        <div class="section-header">
-            <h2>🔧 PREDIMENSIONAMIENTO ESTRUCTURAL</h2>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # Losas
-        h_losa = max(L_viga / 25, 0.17)
-        rho_min_losa = 0.0018
-        
-        # Vigas
-        d_viga = L_viga * 100 / 10
-        b_viga = max(0.3 * d_viga, 25)
-        rho_min_viga = max(0.8 * sqrt(f_c) / f_y, 14 / f_y)
-        rho_max_viga = 0.025
-        
-        # Columnas
-        P_servicio = num_pisos * (CM + 0.25*CV) * (L_viga*num_vanos)**2
-        P_mayorada = num_pisos * (1.2*CM + 1.6*CV) * (L_viga*num_vanos)**2
-        A_columna_servicio = P_servicio / (0.45*f_c)
-        A_columna_mayorada = P_mayorada / (0.65*0.8*f_c)
-        A_columna = max(A_columna_servicio, A_columna_mayorada)
-        lado_columna = sqrt(A_columna)
-        
-        # Mostrar predimensionamiento
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            st.markdown("""
-            <div class="metric-card">
-                <h4>🏗️ Losas Aligeradas</h4>
-                <p><strong>Espesor:</strong> """ + f"{h_losa*100:.0f}" + """ cm</p>
-                <p><strong>ρ mín:</strong> """ + f"{rho_min_losa:.4f}" + """</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col2:
-            st.markdown("""
-            <div class="metric-card">
-                <h4>🏗️ Vigas Principales</h4>
-                <p><strong>Peralte:</strong> """ + f"{d_viga:.0f}" + """ cm</p>
-                <p><strong>Ancho:</strong> """ + f"{b_viga:.0f}" + """ cm</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col3:
-            st.markdown("""
-            <div class="metric-card">
-                <h4>🏗️ Columnas</h4>
-                <p><strong>Lado:</strong> """ + f"{lado_columna:.0f}" + """ cm</p>
-                <p><strong>Área:</strong> """ + f"{A_columna:.0f}" + """ cm²</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        # === ANÁLISIS SÍSMICO ===
-        st.markdown("""
-        <div class="section-header">
-            <h2>🌎 ANÁLISIS SÍSMICO (E.030)</h2>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        P_edificio = num_pisos * (CM + 0.25*CV) * (L_viga*num_vanos)**2
-        T = 0.1 * num_pisos
-        
-        if tipo_suelo == "S1":
-            C = 2.5 * (1.0/T)**0.8
-        else:
-            C = 2.5 * (1.0/T)
-        
-        V = (Z * factor_importancia * C * S * P_edificio) / R
-        
-        # Distribución de fuerzas
-        Fx = []
-        sum_h = sum([i*h_piso for i in range(1, num_pisos+1)])
-        for i in range(1, num_pisos+1):
-            Fx.append(V * (i*h_piso)/sum_h)
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.markdown("""
-            <div class="metric-card">
-                <h4>📊 Resultados Sísmicos</h4>
-                <p><strong>Peso total:</strong> """ + f"{P_edificio/1000:.1f}" + """ ton</p>
-                <p><strong>Coeficiente C:</strong> """ + f"{C:.3f}" + """</p>
-                <p><strong>Cortante basal:</strong> """ + f"{V/1000:.1f}" + """ ton</p>
-                <p><strong>Período T:</strong> """ + f"{T:.2f}" + """ s</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col2:
-            # Gráfico de fuerzas sísmicas
-            fig_sismo = go.Figure()
-            fig_sismo.add_trace(go.Bar(
-                x=list(range(1, num_pisos+1)),
-                y=[f/1000 for f in Fx],
-                name='Fuerza Sísmica',
-                marker_color='#dc3545',
-                text=[f"{f/1000:.1f}" for f in Fx],
-                textposition='outside'
-            ))
-            fig_sismo.update_layout(
-                title="Distribución de Fuerzas Sísmicas",
-                xaxis_title="Nivel",
-                yaxis_title="Fuerza (ton)",
-                template="plotly_white",
-                height=400
-            )
-            st.plotly_chart(fig_sismo, use_container_width=True)
-        
-        # === DISEÑO ESTRUCTURAL ===
-        st.markdown("""
-        <div class="section-header">
-            <h2>🛠️ DISEÑO DE ELEMENTOS ESTRUCTURALES</h2>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # Diseño de vigas
-        M_u = (1.2*CM + 1.6*CV) * L_viga**2 / 8 * 100
-        phi = 0.9
-        d_viga_cm = d_viga - 4
-        
-        # Iteración para As
-        a_estimado = d_viga_cm / 5
-        A_s = M_u / (phi * f_y * (d_viga_cm - a_estimado/2))
-        a_real = (A_s * f_y) / (0.85 * f_c * b_viga)
-        A_s_corr = M_u / (phi * f_y * (d_viga_cm - a_real/2))
-        
-        rho_provisto = A_s_corr / (b_viga * d_viga_cm)
-        cumple_cuantia = rho_min_viga <= rho_provisto <= rho_max_viga
-        
-        # Diseño por cortante
-        V_u = (1.2*CM + 1.6*CV) * L_viga / 2
-        phi_v = 0.75
-        V_c = 0.53 * sqrt(f_c) * b_viga * d_viga_cm
-        V_s_max = 2.1 * sqrt(f_c) * b_viga * d_viga_cm
-        
-        # Diseño de columnas
-        P_u = P_mayorada
-        phi_col = 0.65
-        A_g = lado_columna**2
-        As_min = 0.01 * A_g
-        As_max = 0.06 * A_g
-        Pn = P_u / phi_col
-        P0 = 0.85*f_c*(A_g - As_min) + f_y*As_min
-        
-        # Mostrar resultados de diseño
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.markdown("""
-            <div class="metric-card">
-                <h4>🏗️ Viga - Flexión</h4>
-                <p><strong>Mu:</strong> """ + f"{M_u/100:.1f}" + """ kgf·m</p>
-                <p><strong>As:</strong> """ + f"{A_s_corr:.2f}" + """ cm²</p>
-                <p><strong>ρ:</strong> """ + f"{rho_provisto:.4f}" + """</p>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            if cumple_cuantia:
+                # Verificar plan del usuario
+                plan = st.session_state.get('plan', 'basico')
+                if plan == "basico":
+                    st.warning("⚠️ El análisis completo requiere plan premium o empresarial")
+                    st.info("Plan básico incluye: Cálculos básicos, resultados simples")
+                    st.info("Plan premium incluye: Análisis completo, reportes detallados, gráficos avanzados")
+                    
+                    # Mostrar botón para actualizar plan
+                    col1, col2, col3 = st.columns([1, 2, 1])
+                    with col2:
+                        if st.button("⭐ Actualizar a Premium", type="primary"):
+                            st.session_state['plan'] = "premium"
+                            st.success("✅ Plan premium activado")
+                            st.rerun()
+                    st.stop()
+                
+                st.success("✅ ¡Iniciando análisis completo!")
+                
+                # Obtener datos del sidebar desde session state
+                f_c = st.session_state.get('f_c', 210)
+                f_y = st.session_state.get('f_y', 4200)
+                L_viga = st.session_state.get('L_viga', 6.0)
+                h_piso = st.session_state.get('h_piso', 3.0)
+                num_pisos = st.session_state.get('num_pisos', 15)
+                num_vanos = st.session_state.get('num_vanos', 3)
+                CM = st.session_state.get('CM', 150)
+                CV = st.session_state.get('CV', 200)
+                zona_sismica = st.session_state.get('zona_sismica', 'Z3')
+                tipo_suelo = st.session_state.get('tipo_suelo', 'S2')
+                tipo_estructura = st.session_state.get('tipo_estructura', 'Pórticos')
+                factor_importancia = st.session_state.get('factor_importancia', 1.0)
+                
+                # Mostrar datos de entrada
                 st.markdown("""
-                <div class="success-box">
-                    ✅ CUMPLE cuantías de acero
+                <div class="section-header">
+                    <h2>📋 Resumen de Datos de Entrada</h2>
                 </div>
                 """, unsafe_allow_html=True)
-            else:
+                
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    st.markdown(f"""
+                    <div class="metric-card">
+                        <h4>🏗️ Materiales</h4>
+                        <p><strong>f'c:</strong> {f_c} kg/cm²</p>
+                        <p><strong>fy:</strong> {f_y} kg/cm²</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col2:
+                    st.markdown(f"""
+                    <div class="metric-card">
+                        <h4>📐 Geometría</h4>
+                        <p><strong>Luz:</strong> {L_viga} m</p>
+                        <p><strong>Altura piso:</strong> {h_piso} m</p>
+                        <p><strong>Pisos:</strong> {num_pisos}</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col3:
+                    st.markdown(f"""
+                    <div class="metric-card">
+                        <h4>🌎 Sísmicos</h4>
+                        <p><strong>Zona:</strong> {zona_sismica}</p>
+                        <p><strong>Suelo:</strong> {tipo_suelo}</p>
+                        <p><strong>Sistema:</strong> {tipo_estructura}</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                # Calcular módulo de elasticidad
+                E = 15000 * sqrt(f_c)
+                
+                # Factores sísmicos
+                factores_Z = {"Z1": 0.10, "Z2": 0.20, "Z3": 0.30, "Z4": 0.45}
+                Z = factores_Z[zona_sismica]
+                
+                factores_R = {"Pórticos": 8.0, "Muros Estructurales": 6.0, "Dual": 7.0}
+                R = factores_R[tipo_estructura]
+                
+                factores_S = {"S1": 1.0, "S2": 1.2, "S3": 1.4, "S4": 1.6}
+                S = factores_S[tipo_suelo]
+                
+                # === PREDIMENSIONAMIENTO ===
                 st.markdown("""
-                <div class="error-box">
-                    ⚠️ NO CUMPLE cuantías de acero
+                <div class="section-header">
+                    <h2>🔧 PREDIMENSIONAMIENTO ESTRUCTURAL</h2>
                 </div>
                 """, unsafe_allow_html=True)
-        
-        with col2:
-            st.markdown("""
-            <div class="metric-card">
-                <h4>🏗️ Columna - Compresión</h4>
-                <p><strong>Pu:</strong> """ + f"{P_u/1000:.1f}" + """ ton</p>
-                <p><strong>As min:</strong> """ + f"{As_min:.1f}" + """ cm²</p>
-                <p><strong>As max:</strong> """ + f"{As_max:.1f}" + """ cm²</p>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            if Pn <= P0:
+                
+                # Losas
+                h_losa = max(L_viga / 25, 0.17)
+                rho_min_losa = 0.0018
+                
+                # Vigas
+                d_viga = L_viga * 100 / 10
+                b_viga = max(0.3 * d_viga, 25)
+                rho_min_viga = max(0.8 * sqrt(f_c) / f_y, 14 / f_y)
+                rho_max_viga = 0.025
+                
+                # Columnas
+                P_servicio = num_pisos * (CM + 0.25*CV) * (L_viga*num_vanos)**2
+                P_mayorada = num_pisos * (1.2*CM + 1.6*CV) * (L_viga*num_vanos)**2
+                A_columna_servicio = P_servicio / (0.45*f_c)
+                A_columna_mayorada = P_mayorada / (0.65*0.8*f_c)
+                A_columna = max(A_columna_servicio, A_columna_mayorada)
+                lado_columna = sqrt(A_columna)
+                
+                # Mostrar predimensionamiento
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    st.markdown("""
+                    <div class="metric-card">
+                        <h4>🏗️ Losas Aligeradas</h4>
+                        <p><strong>Espesor:</strong> """ + f"{h_losa*100:.0f}" + """ cm</p>
+                        <p><strong>ρ mín:</strong> """ + f"{rho_min_losa:.4f}" + """</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col2:
+                    st.markdown("""
+                    <div class="metric-card">
+                        <h4>🏗️ Vigas Principales</h4>
+                        <p><strong>Peralte:</strong> """ + f"{d_viga:.0f}" + """ cm</p>
+                        <p><strong>Ancho:</strong> """ + f"{b_viga:.0f}" + """ cm</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col3:
+                    st.markdown("""
+                    <div class="metric-card">
+                        <h4>🏗️ Columnas</h4>
+                        <p><strong>Lado:</strong> """ + f"{lado_columna:.0f}" + """ cm</p>
+                        <p><strong>Área:</strong> """ + f"{A_columna:.0f}" + """ cm²</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                # === ANÁLISIS SÍSMICO ===
                 st.markdown("""
-                <div class="success-box">
-                    ✅ Columna resiste la carga axial
+                <div class="section-header">
+                    <h2>🌎 ANÁLISIS SÍSMICO (E.030)</h2>
                 </div>
                 """, unsafe_allow_html=True)
-            else:
+                
+                P_edificio = num_pisos * (CM + 0.25*CV) * (L_viga*num_vanos)**2
+                T = 0.1 * num_pisos
+                
+                if tipo_suelo == "S1":
+                    C = 2.5 * (1.0/T)**0.8
+                else:
+                    C = 2.5 * (1.0/T)
+                
+                V = (Z * factor_importancia * C * S * P_edificio) / R
+                
+                # Distribución de fuerzas
+                Fx = []
+                sum_h = sum([i*h_piso for i in range(1, num_pisos+1)])
+                for i in range(1, num_pisos+1):
+                    Fx.append(V * (i*h_piso)/sum_h)
+                
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.markdown("""
+                    <div class="metric-card">
+                        <h4>📊 Resultados Sísmicos</h4>
+                        <p><strong>Peso total:</strong> """ + f"{P_edificio/1000:.1f}" + """ ton</p>
+                        <p><strong>Coeficiente C:</strong> """ + f"{C:.3f}" + """</p>
+                        <p><strong>Cortante basal:</strong> """ + f"{V/1000:.1f}" + """ ton</p>
+                        <p><strong>Período T:</strong> """ + f"{T:.2f}" + """ s</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col2:
+                    # Gráfico de fuerzas sísmicas
+                    fig_sismo = go.Figure()
+                    fig_sismo.add_trace(go.Bar(
+                        x=list(range(1, num_pisos+1)),
+                        y=[f/1000 for f in Fx],
+                        name='Fuerza Sísmica',
+                        marker_color='#dc3545',
+                        text=[f"{f/1000:.1f}" for f in Fx],
+                        textposition='outside'
+                    ))
+                    fig_sismo.update_layout(
+                        title="Distribución de Fuerzas Sísmicas",
+                        xaxis_title="Nivel",
+                        yaxis_title="Fuerza (ton)",
+                        template="plotly_white",
+                        height=400
+                    )
+                    st.plotly_chart(fig_sismo, use_container_width=True)
+                
+                # === DISEÑO ESTRUCTURAL ===
                 st.markdown("""
-                <div class="error-box">
-                    ⚠️ Aumentar dimensiones de columna
+                <div class="section-header">
+                    <h2>🛠️ DISEÑO DE ELEMENTOS ESTRUCTURALES</h2>
                 </div>
                 """, unsafe_allow_html=True)
-        
-        # === GRÁFICAS TIPO McCORMAC ===
-        st.markdown("""
-        <div class="section-header">
-            <h2>📈 DIAGRAMAS DE CORTANTE Y MOMENTO (Estilo McCormac)</h2>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # Calcular diagramas tipo McCormac (más realistas)
-        pisos = list(range(1, num_pisos + 1))
-        
-        # Cortantes tipo McCormac: decrecen linealmente hacia arriba
-        cortantes = []
-        for i, piso in enumerate(pisos):
-            # Cortante máximo en la base, decrece hacia arriba
-            cortante_base = V_u * (num_pisos - i + 1) / num_pisos
-            # Variación realista según McCormac
-            factor_variacion = 1.0 - 0.05 * i  # Decrece 5% por piso
-            cortante = cortante_base * factor_variacion
-            cortantes.append(cortante)
-        
-        # Momentos tipo McCormac: máximo en el centro, decrece hacia extremos
-        momentos = []
-        for i, piso in enumerate(pisos):
-            # Momento máximo en el centro del edificio
-            momento_base = M_u * (num_pisos - i + 1) / num_pisos
-            # Distribución tipo McCormac (parabólica)
-            factor_centro = 1.0 - 0.1 * abs(i - num_pisos/2) / (num_pisos/2)
-            momento = momento_base * factor_centro
-            momentos.append(momento)
-        
-        # Gráfico de cortantes estilo McCormac
-        fig_cortante = go.Figure()
-        fig_cortante.add_trace(go.Scatter(
-            x=pisos,
-            y=[c/1000 for c in cortantes],
-            mode='lines+markers',
-            name='Cortante (ton)',
-            line=dict(color='#dc3545', width=4),
-            marker=dict(size=10, color='#dc3545', symbol='circle'),
-            fill='tonexty',
-            fillcolor='rgba(220, 53, 69, 0.2)'
-        ))
-        fig_cortante.update_layout(
-            title="Diagrama de Cortantes por Piso (Estilo McCormac)",
-            xaxis_title="Nivel",
-            yaxis_title="Cortante (ton)",
-            template="plotly_white",
-            height=450,
-            showlegend=True,
-            font=dict(size=14),
-            plot_bgcolor='white',
-            paper_bgcolor='white'
-        )
-        fig_cortante.update_xaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
-        fig_cortante.update_yaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
-        st.plotly_chart(fig_cortante, use_container_width=True)
-        
-        # Gráfico de momentos estilo McCormac
-        fig_momento = go.Figure()
-        fig_momento.add_trace(go.Scatter(
-            x=pisos,
-            y=[m/100 for m in momentos],
-            mode='lines+markers',
-            name='Momento (ton·m)',
-            line=dict(color='#007bff', width=4),
-            marker=dict(size=10, color='#007bff', symbol='diamond'),
-            fill='tonexty',
-            fillcolor='rgba(0, 123, 255, 0.2)'
-        ))
-        fig_momento.update_layout(
-            title="Diagrama de Momentos por Piso (Estilo McCormac)",
-            xaxis_title="Nivel",
-            yaxis_title="Momento (ton·m)",
-            template="plotly_white",
-            height=450,
-            showlegend=True,
-            font=dict(size=14),
-            plot_bgcolor='white',
-            paper_bgcolor='white'
-        )
-        fig_momento.update_xaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
-        fig_momento.update_yaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
-        st.plotly_chart(fig_momento, use_container_width=True)
-        
-        # Gráfico combinado simplificado (sin ejes duales para evitar errores)
-        fig_combinado = go.Figure()
-        
-        # Normalizar los valores para mostrar en el mismo eje
-        cortantes_norm = [c/1000 for c in cortantes]
-        momentos_norm = [m/100 for m in momentos]
-        
-        fig_combinado.add_trace(go.Scatter(
-            x=pisos,
-            y=cortantes_norm,
-            mode='lines+markers',
-            name='Cortante (ton)',
-            line=dict(color='#dc3545', width=3),
-            marker=dict(size=8, color='#dc3545')
-        ))
-        
-        fig_combinado.add_trace(go.Scatter(
-            x=pisos,
-            y=momentos_norm,
-            mode='lines+markers',
-            name='Momento (ton·m)',
-            line=dict(color='#007bff', width=3),
-            marker=dict(size=8, color='#007bff')
-        ))
-        
-        fig_combinado.update_layout(
-            title="Diagrama Combinado de Cortantes y Momentos (Estilo McCormac)",
-            xaxis_title="Nivel",
-            yaxis_title="Valores Normalizados",
-            template="plotly_white",
-            height=500,
-            showlegend=True,
-            font=dict(size=14),
-            plot_bgcolor='white',
-            paper_bgcolor='white'
-        )
-        fig_combinado.update_xaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
-        fig_combinado.update_yaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
-        st.plotly_chart(fig_combinado, use_container_width=True)
-        
-        # Tabla de valores tipo McCormac
-        st.markdown("""
-        <div class="section-header">
-            <h3>📊 Tabla de Valores de Cortante y Momento</h3>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        tabla_data = {
-            "Nivel": pisos,
-            "Cortante (ton)": [f"{c/1000:.2f}" for c in cortantes],
-            "Momento (ton·m)": [f"{m/100:.2f}" for m in momentos]
-        }
-        df_tabla = pd.DataFrame(tabla_data)
-        st.dataframe(df_tabla, use_container_width=True, hide_index=True)
-        
-        # === REPORTE FINAL ===
-        st.markdown("""
-        <div class="section-header">
-            <h2>📝 REPORTE ESTRUCTURAL COMPLETO</h2>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # Resumen final
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.markdown("""
-            <div class="metric-card">
-                <h4>📋 Resumen de Diseño</h4>
-                <p><strong>Losa:</strong> """ + f"{h_losa*100:.0f}" + """ cm</p>
-                <p><strong>Viga:</strong> """ + f"{b_viga:.0f}" + """×""" + f"{d_viga:.0f}" + """ cm</p>
-                <p><strong>Columna:</strong> """ + f"{lado_columna:.0f}" + """×""" + f"{lado_columna:.0f}" + """ cm</p>
-                <p><strong>Acero viga:</strong> """ + f"{A_s_corr:.2f}" + """ cm²</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col2:
-            st.markdown("""
-            <div class="metric-card">
-                <h4>🌎 Análisis Sísmico</h4>
-                <p><strong>Cortante basal:</strong> """ + f"{V/1000:.1f}" + """ ton</p>
-                <p><strong>Período:</strong> """ + f"{T:.2f}" + """ s</p>
-                <p><strong>Coeficiente:</strong> """ + f"{C:.3f}" + """</p>
-                <p><strong>Zona:</strong> """ + zona_sismica + """</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        # Generar reporte en texto (alternativa al PDF)
-        st.markdown("""
-        <div class="section-header">
-            <h3>📄 Reporte Generado</h3>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        reporte_texto = f"""
-        **CONSORCIO DEJ - REPORTE ESTRUCTURAL**
-        
-        **Fecha:** {datetime.now().strftime('%d/%m/%Y %H:%M')}
-        **Usuario:** {st.session_state.username}
-        
-        **DATOS DEL PROYECTO:**
-        - Resistencia del concreto (f'c): {f_c} kg/cm²
-        - Esfuerzo de fluencia (fy): {f_y} kg/cm²
-        - Luz libre de vigas: {L_viga} m
-        - Número de pisos: {num_pisos}
-        - Zona sísmica: {zona_sismica}
-        
-        **RESULTADOS DEL ANÁLISIS:**
-        - Espesor de losa: {h_losa*100:.0f} cm
-        - Dimensiones de viga: {b_viga:.0f}×{d_viga:.0f} cm
-        - Dimensiones de columna: {lado_columna:.0f}×{lado_columna:.0f} cm
-        - Acero requerido en viga: {A_s_corr:.2f} cm²
-        - Cortante basal: {V/1000:.1f} ton
-        - Período fundamental: {T:.2f} s
-        
-        **NOTA:** Este reporte fue generado automáticamente por el software de análisis estructural CONSORCIO DEJ.
-        """
-        
-        st.text_area("📋 Reporte Completo", reporte_texto, height=300)
-        
-        # Botón para copiar reporte
-        if st.button("📋 Copiar Reporte al Portapapeles", type="secondary"):
-            st.success("✅ Reporte copiado al portapapeles")
-        
-        # === BOTÓN DE GENERAR PDF CON NORMAS E.060 Y ACI 2025 ===
-        st.markdown("""
-        <div class="section-header">
-            <h2>📄 GENERAR REPORTE PDF PROFESIONAL</h2>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.markdown("""
-            <div class="metric-card">
-                <h4>🇵🇪 Norma E.060 - Concreto Armado</h4>
-                <p>• Diseño por flexión (Art. 10.3)</p>
-                <p>• Diseño por cortante (Art. 11.1)</p>
-                <p>• Cuantías mínimas y máximas</p>
-                <p>• Análisis sísmico (E.030)</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col2:
-            st.markdown("""
-            <div class="metric-card">
-                <h4>🇺🇸 ACI 318-2025</h4>
-                <p>• Strength Design Method</p>
-                <p>• Shear Design (Chapter 9)</p>
-                <p>• Minimum Reinforcement</p>
-                <p>• Seismic Design (Chapter 18)</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        # Botón para generar PDF con manejo de errores mejorado
-        if st.button("📄 GENERAR REPORTE PDF PROFESIONAL", type="primary", use_container_width=True):
-            with st.spinner('Generando reporte PDF...'):
-                try:
-                    # Verificar plan del usuario
-                    plan = st.session_state.get('plan', 'basico')
-                    if plan == "basico":
-                        st.warning("⚠️ Esta función requiere plan premium o empresarial")
-                        st.info("Actualiza tu plan para acceder a reportes PDF profesionales")
-                        st.stop()
+                
+                # Diseño de vigas
+                M_u = (1.2*CM + 1.6*CV) * L_viga**2 / 8 * 100
+                phi = 0.9
+                d_viga_cm = d_viga - 4
+                
+                # Iteración para As
+                a_estimado = d_viga_cm / 5
+                A_s = M_u / (phi * f_y * (d_viga_cm - a_estimado/2))
+                a_real = (A_s * f_y) / (0.85 * f_c * b_viga)
+                A_s_corr = M_u / (phi * f_y * (d_viga_cm - a_real/2))
+                
+                rho_provisto = A_s_corr / (b_viga * d_viga_cm)
+                cumple_cuantia = rho_min_viga <= rho_provisto <= rho_max_viga
+                
+                # Diseño por cortante
+                V_u = (1.2*CM + 1.6*CV) * L_viga / 2
+                phi_v = 0.75
+                V_c = 0.53 * sqrt(f_c) * b_viga * d_viga_cm
+                V_s_max = 2.1 * sqrt(f_c) * b_viga * d_viga_cm
+                
+                # Diseño de columnas
+                P_u = P_mayorada
+                phi_col = 0.65
+                A_g = lado_columna**2
+                As_min = 0.01 * A_g
+                As_max = 0.06 * A_g
+                Pn = P_u / phi_col
+                P0 = 0.85*f_c*(A_g - As_min) + f_y*As_min
+                
+                # Mostrar resultados de diseño
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.markdown("""
+                    <div class="metric-card">
+                        <h4>🏗️ Viga - Flexión</h4>
+                        <p><strong>Mu:</strong> """ + f"{M_u/100:.1f}" + """ kgf·m</p>
+                        <p><strong>As:</strong> """ + f"{A_s_corr:.2f}" + """ cm²</p>
+                        <p><strong>ρ:</strong> """ + f"{rho_provisto:.4f}" + """</p>
+                    </div>
+                    """, unsafe_allow_html=True)
                     
-                    # Preparar datos para el reporte
-                    datos_proyecto = {
-                        'fecha': datetime.now().strftime('%d/%m/%Y %H:%M'),
-                        'usuario': st.session_state.username.upper(),
-                        'fc': f_c,
-                        'fy': f_y,
-                        'E': E,
-                        'L_viga': L_viga,
-                        'h_piso': h_piso,
-                        'num_pisos': num_pisos,
-                        'num_vanos': num_vanos,
-                        'CM': CM,
-                        'CV': CV,
-                        'zona_sismica': zona_sismica,
-                        'tipo_suelo': tipo_suelo,
-                        'tipo_estructura': tipo_estructura,
-                        'factor_importancia': factor_importancia
-                    }
-                    
-                    resultados_analisis = {
-                        'h_losa': h_losa*100,
-                        'b_viga': b_viga,
-                        'd_viga': d_viga,
-                        'lado_columna': lado_columna,
-                        'A_columna': A_columna,
-                        'A_s_corr': A_s_corr,
-                        'V': V/1000,
-                        'T': T,
-                        'C': C,
-                        'M_u': M_u/100,
-                        'V_u': V_u,
-                        'V_c': V_c,
-                        'V_s_max': V_s_max,
-                        'P_u': P_u/1000,
-                        'As_min': As_min,
-                        'As_max': As_max,
-                        'phi': phi,
-                        'phi_col': phi_col,
-                        'rho_min_losa': rho_min_losa,
-                        'rho_min_viga': rho_min_viga,
-                        'rho_max_viga': rho_max_viga,
-                        'rho_provisto': rho_provisto,
-                        'P_servicio': P_servicio/1000,
-                        'P_mayorada': P_mayorada/1000,
-                        'P_edificio': P_edificio/1000,
-                        'cumple_cuantia': cumple_cuantia,
-                        'cumple_columna': Pn <= P0
-                    }
-                    
-                    # Generar reporte en PDF
-                    pdf_buffer = generar_pdf_profesional(datos_proyecto, resultados_analisis)
-                    
-                    if pdf_buffer:
-                        # Crear botón de descarga
-                        st.success("✅ Reporte generado exitosamente!")
-                        
-                        st.download_button(
-                            label="📥 DESCARGAR REPORTE PDF",
-                            data=pdf_buffer.getvalue(),
-                            file_name=f"Reporte_Estructural_{datetime.now().strftime('%Y%m%d')}.pdf",
-                            mime="application/pdf",
-                            type="primary",
-                            use_container_width=True
-                        )
+                    if cumple_cuantia:
+                        st.markdown("""
+                        <div class="success-box">
+                            ✅ CUMPLE cuantías de acero
+                        </div>
+                        """, unsafe_allow_html=True)
                     else:
-                        st.error("No se pudo generar el PDF. Por favor intente nuevamente.")
-                        
-                except Exception as e:
-                    st.error(f"Error inesperado: {str(e)}")
-                    st.info("💡 Sugerencia: Verifique que todos los datos estén completos y vuelva a intentar.")
-        
-        st.balloons()
-        st.success("🎉 ¡Análisis estructural completado exitosamente!")
+                        st.markdown("""
+                        <div class="error-box">
+                            ⚠️ NO CUMPLE cuantías de acero
+                        </div>
+                        """, unsafe_allow_html=True)
+                
+                with col2:
+                    st.markdown("""
+                    <div class="metric-card">
+                        <h4>🏗️ Columna - Compresión</h4>
+                        <p><strong>Pu:</strong> """ + f"{P_u/1000:.1f}" + """ ton</p>
+                        <p><strong>As min:</strong> """ + f"{As_min:.1f}" + """ cm²</p>
+                        <p><strong>As max:</strong> """ + f"{As_max:.1f}" + """ cm²</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    if Pn <= P0:
+                        st.markdown("""
+                        <div class="success-box">
+                            ✅ Columna resiste la carga axial
+                        </div>
+                        """, unsafe_allow_html=True)
+                    else:
+                        st.markdown("""
+                        <div class="error-box">
+                            ⚠️ Aumentar dimensiones de columna
+                        </div>
+                        """, unsafe_allow_html=True)
+                
+                # === GRÁFICAS TIPO McCORMAC ===
+                st.markdown("""
+                <div class="section-header">
+                    <h2>📈 DIAGRAMAS DE CORTANTE Y MOMENTO (Estilo McCormac)</h2>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Calcular diagramas tipo McCormac (más realistas)
+                pisos = list(range(1, num_pisos + 1))
+                
+                # Cortantes tipo McCormac: decrecen linealmente hacia arriba
+                cortantes = []
+                for i, piso in enumerate(pisos):
+                    # Cortante máximo en la base, decrece hacia arriba
+                    cortante_base = V_u * (num_pisos - i + 1) / num_pisos
+                    # Variación realista según McCormac
+                    factor_variacion = 1.0 - 0.05 * i  # Decrece 5% por piso
+                    cortante = cortante_base * factor_variacion
+                    cortantes.append(cortante)
+                
+                # Momentos tipo McCormac: máximo en el centro, decrece hacia extremos
+                momentos = []
+                for i, piso in enumerate(pisos):
+                    # Momento máximo en el centro del edificio
+                    momento_base = M_u * (num_pisos - i + 1) / num_pisos
+                    # Distribución tipo McCormac (parabólica)
+                    factor_centro = 1.0 - 0.1 * abs(i - num_pisos/2) / (num_pisos/2)
+                    momento = momento_base * factor_centro
+                    momentos.append(momento)
+                
+                # Gráfico de cortantes estilo McCormac
+                fig_cortante = go.Figure()
+                fig_cortante.add_trace(go.Scatter(
+                    x=pisos,
+                    y=[c/1000 for c in cortantes],
+                    mode='lines+markers',
+                    name='Cortante (ton)',
+                    line=dict(color='#dc3545', width=4),
+                    marker=dict(size=10, color='#dc3545', symbol='circle'),
+                    fill='tonexty',
+                    fillcolor='rgba(220, 53, 69, 0.2)'
+                ))
+                fig_cortante.update_layout(
+                    title="Diagrama de Cortantes por Piso (Estilo McCormac)",
+                    xaxis_title="Nivel",
+                    yaxis_title="Cortante (ton)",
+                    template="plotly_white",
+                    height=450,
+                    showlegend=True,
+                    font=dict(size=14),
+                    plot_bgcolor='white',
+                    paper_bgcolor='white'
+                )
+                fig_cortante.update_xaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
+                fig_cortante.update_yaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
+                st.plotly_chart(fig_cortante, use_container_width=True)
+                
+                # Gráfico de momentos estilo McCormac
+                fig_momento = go.Figure()
+                fig_momento.add_trace(go.Scatter(
+                    x=pisos,
+                    y=[m/100 for m in momentos],
+                    mode='lines+markers',
+                    name='Momento (ton·m)',
+                    line=dict(color='#007bff', width=4),
+                    marker=dict(size=10, color='#007bff', symbol='diamond'),
+                    fill='tonexty',
+                    fillcolor='rgba(0, 123, 255, 0.2)'
+                ))
+                fig_momento.update_layout(
+                    title="Diagrama de Momentos por Piso (Estilo McCormac)",
+                    xaxis_title="Nivel",
+                    yaxis_title="Momento (ton·m)",
+                    template="plotly_white",
+                    height=450,
+                    showlegend=True,
+                    font=dict(size=14),
+                    plot_bgcolor='white',
+                    paper_bgcolor='white'
+                )
+                fig_momento.update_xaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
+                fig_momento.update_yaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
+                st.plotly_chart(fig_momento, use_container_width=True)
+                
+                # Gráfico combinado simplificado (sin ejes duales para evitar errores)
+                fig_combinado = go.Figure()
+                
+                # Normalizar los valores para mostrar en el mismo eje
+                cortantes_norm = [c/1000 for c in cortantes]
+                momentos_norm = [m/100 for m in momentos]
+                
+                fig_combinado.add_trace(go.Scatter(
+                    x=pisos,
+                    y=cortantes_norm,
+                    mode='lines+markers',
+                    name='Cortante (ton)',
+                    line=dict(color='#dc3545', width=3),
+                    marker=dict(size=8, color='#dc3545')
+                ))
+                
+                fig_combinado.add_trace(go.Scatter(
+                    x=pisos,
+                    y=momentos_norm,
+                    mode='lines+markers',
+                    name='Momento (ton·m)',
+                    line=dict(color='#007bff', width=3),
+                    marker=dict(size=8, color='#007bff')
+                ))
+                
+                fig_combinado.update_layout(
+                    title="Diagrama Combinado de Cortantes y Momentos (Estilo McCormac)",
+                    xaxis_title="Nivel",
+                    yaxis_title="Valores Normalizados",
+                    template="plotly_white",
+                    height=500,
+                    showlegend=True,
+                    font=dict(size=14),
+                    plot_bgcolor='white',
+                    paper_bgcolor='white'
+                )
+                fig_combinado.update_xaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
+                fig_combinado.update_yaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
+                st.plotly_chart(fig_combinado, use_container_width=True)
+                
+                # Tabla de valores tipo McCormac
+                st.markdown("""
+                <div class="section-header">
+                    <h3>📊 Tabla de Valores de Cortante y Momento</h3>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                tabla_data = {
+                    "Nivel": pisos,
+                    "Cortante (ton)": [f"{c/1000:.2f}" for c in cortantes],
+                    "Momento (ton·m)": [f"{m/100:.2f}" for m in momentos]
+                }
+                df_tabla = pd.DataFrame(tabla_data)
+                st.dataframe(df_tabla, use_container_width=True, hide_index=True)
+                
+                # === REPORTE FINAL ===
+                st.markdown("""
+                <div class="section-header">
+                    <h2>📝 REPORTE ESTRUCTURAL COMPLETO</h2>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Resumen final
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.markdown("""
+                    <div class="metric-card">
+                        <h4>📋 Resumen de Diseño</h4>
+                        <p><strong>Losa:</strong> """ + f"{h_losa*100:.0f}" + """ cm</p>
+                        <p><strong>Viga:</strong> """ + f"{b_viga:.0f}" + """×""" + f"{d_viga:.0f}" + """ cm</p>
+                        <p><strong>Columna:</strong> """ + f"{lado_columna:.0f}" + """×""" + f"{lado_columna:.0f}" + """ cm</p>
+                        <p><strong>Acero viga:</strong> """ + f"{A_s_corr:.2f}" + """ cm²</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col2:
+                    st.markdown("""
+                    <div class="metric-card">
+                        <h4>🌎 Análisis Sísmico</h4>
+                        <p><strong>Cortante basal:</strong> """ + f"{V/1000:.1f}" + """ ton</p>
+                        <p><strong>Período:</strong> """ + f"{T:.2f}" + """ s</p>
+                        <p><strong>Coeficiente:</strong> """ + f"{C:.3f}" + """</p>
+                        <p><strong>Zona:</strong> """ + zona_sismica + """</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                # Generar reporte en texto (alternativa al PDF)
+                st.markdown("""
+                <div class="section-header">
+                    <h3>📄 Reporte Generado</h3>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                reporte_texto = f"""
+                **CONSORCIO DEJ - REPORTE ESTRUCTURAL**
+                
+                **Fecha:** {datetime.now().strftime('%d/%m/%Y %H:%M')}
+                **Usuario:** {st.session_state.username}
+                
+                **DATOS DEL PROYECTO:**
+                - Resistencia del concreto (f'c): {f_c} kg/cm²
+                - Esfuerzo de fluencia (fy): {f_y} kg/cm²
+                - Luz libre de vigas: {L_viga} m
+                - Número de pisos: {num_pisos}
+                - Zona sísmica: {zona_sismica}
+                
+                **RESULTADOS DEL ANÁLISIS:**
+                - Espesor de losa: {h_losa*100:.0f} cm
+                - Dimensiones de viga: {b_viga:.0f}×{d_viga:.0f} cm
+                - Dimensiones de columna: {lado_columna:.0f}×{lado_columna:.0f} cm
+                - Acero requerido en viga: {A_s_corr:.2f} cm²
+                - Cortante basal: {V/1000:.1f} ton
+                - Período fundamental: {T:.2f} s
+                
+                **NOTA:** Este reporte fue generado automáticamente por el software de análisis estructural CONSORCIO DEJ.
+                """
+                
+                st.text_area("📋 Reporte Completo", reporte_texto, height=300)
+                
+                # Botón para copiar reporte
+                if st.button("📋 Copiar Reporte al Portapapeles", type="secondary"):
+                    st.success("✅ Reporte copiado al portapapeles")
+                
+                # === BOTÓN DE GENERAR PDF CON NORMAS E.060 Y ACI 2025 ===
+                st.markdown("""
+                <div class="section-header">
+                    <h2>📄 GENERAR REPORTE PDF PROFESIONAL</h2>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.markdown("""
+                    <div class="metric-card">
+                        <h4>🇵🇪 Norma E.060 - Concreto Armado</h4>
+                        <p>• Diseño por flexión (Art. 10.3)</p>
+                        <p>• Diseño por cortante (Art. 11.1)</p>
+                        <p>• Cuantías mínimas y máximas</p>
+                        <p>• Análisis sísmico (E.030)</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col2:
+                    st.markdown("""
+                    <div class="metric-card">
+                        <h4>🇺🇸 ACI 318-2025</h4>
+                        <p>• Strength Design Method</p>
+                        <p>• Shear Design (Chapter 9)</p>
+                        <p>• Minimum Reinforcement</p>
+                        <p>• Seismic Design (Chapter 18)</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                # Botón para generar PDF con manejo de errores mejorado
+                if st.button("📄 GENERAR REPORTE PDF PROFESIONAL", type="primary", use_container_width=True):
+                    with st.spinner('Generando reporte PDF...'):
+                        try:
+                            # Verificar plan del usuario
+                            plan = st.session_state.get('plan', 'basico')
+                            if plan == "basico":
+                                st.warning("⚠️ Esta función requiere plan premium o empresarial")
+                                st.info("Actualiza tu plan para acceder a reportes PDF profesionales")
+                                st.stop()
+                            
+                            # Preparar datos para el reporte
+                            datos_proyecto = {
+                                'fecha': datetime.now().strftime('%d/%m/%Y %H:%M'),
+                                'usuario': st.session_state.username.upper(),
+                                'fc': f_c,
+                                'fy': f_y,
+                                'E': E,
+                                'L_viga': L_viga,
+                                'h_piso': h_piso,
+                                'num_pisos': num_pisos,
+                                'num_vanos': num_vanos,
+                                'CM': CM,
+                                'CV': CV,
+                                'zona_sismica': zona_sismica,
+                                'tipo_suelo': tipo_suelo,
+                                'tipo_estructura': tipo_estructura,
+                                'factor_importancia': factor_importancia
+                            }
+                            
+                            resultados_analisis = {
+                                'h_losa': h_losa*100,
+                                'b_viga': b_viga,
+                                'd_viga': d_viga,
+                                'lado_columna': lado_columna,
+                                'A_columna': A_columna,
+                                'A_s_corr': A_s_corr,
+                                'V': V/1000,
+                                'T': T,
+                                'C': C,
+                                'M_u': M_u/100,
+                                'V_u': V_u,
+                                'V_c': V_c,
+                                'V_s_max': V_s_max,
+                                'P_u': P_u/1000,
+                                'As_min': As_min,
+                                'As_max': As_max,
+                                'phi': phi,
+                                'phi_col': phi_col,
+                                'rho_min_losa': rho_min_losa,
+                                'rho_min_viga': rho_min_viga,
+                                'rho_max_viga': rho_max_viga,
+                                'rho_provisto': rho_provisto,
+                                'P_servicio': P_servicio/1000,
+                                'P_mayorada': P_mayorada/1000,
+                                'P_edificio': P_edificio/1000,
+                                'cumple_cuantia': cumple_cuantia,
+                                'cumple_columna': Pn <= P0
+                            }
+                            
+                            # Generar reporte en PDF
+                            pdf_buffer = generar_pdf_profesional(datos_proyecto, resultados_analisis)
+                            
+                            if pdf_buffer:
+                                # Crear botón de descarga
+                                st.success("✅ Reporte generado exitosamente!")
+                                
+                                st.download_button(
+                                    label="📥 DESCARGAR REPORTE PDF",
+                                    data=pdf_buffer.getvalue(),
+                                    file_name=f"Reporte_Estructural_{datetime.now().strftime('%Y%m%d')}.pdf",
+                                    mime="application/pdf",
+                                    type="primary",
+                                    use_container_width=True
+                                )
+                            else:
+                                st.error("No se pudo generar el PDF. Por favor intente nuevamente.")
+                                
+                        except Exception as e:
+                            st.error(f"Error inesperado: {str(e)}")
+                            st.info("💡 Sugerencia: Verifique que todos los datos estén completos y vuelva a intentar.")
+                
+                st.balloons()
+                st.success("🎉 ¡Análisis estructural completado exitosamente!")
     
     elif opcion == "📄 Generar Reporte":
         st.title("📄 Generar Reporte Estructural")
