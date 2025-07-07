@@ -1,0 +1,22 @@
+{
+  "name": "consorcio-dej-pwa",
+  "version": "2.0.0",
+  "description": "CONSORCIO DEJ - An\u00e1lisis Estructural PWA",
+  "main": "index.html",
+  "scripts": {
+    "start": "http-server -p 8080",
+    "dev": "http-server -p 3000 -c-1",
+    "build": "echo 'PWA ready for deployment'"
+  },
+  "keywords": [
+    "pwa",
+    "structural",
+    "analysis",
+    "engineering"
+  ],
+  "author": "CONSORCIO DEJ",
+  "license": "MIT",
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  }
+}

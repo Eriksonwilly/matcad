@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CONSORCIO DEJ - Análisis Estructural</title>
+    <meta name="description" content="Software profesional de análisis estructural ACI 318-2025">
+    <meta name="theme-color" content="#1e3c72">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json">
+    
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" href="/icons/icon-152x152.png">
+    
+    <!-- CSS -->
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header {
+            background: rgba(30, 60, 114, 0.9);
+            color: white;
+            text-align: center;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        
+        .container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .app-frame {
+            width: 100%;
+            max-width: 1200px;
+            height: 80vh;
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            background: white;
+        }
+        
+        .install-prompt {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            display: none;
+        }
+        
+        .install-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 10px;
+        }
+        
+        .install-btn:hover {
+            background: #218838;
+        }
+        
+        .footer {
+            background: rgba(30, 60, 114, 0.9);
+            color: white;
+            text-align: center;
+            padding: 15px;
+            font-size: 12px;
+        }
+        
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 20px;
+            }
+            
+            .app-frame {
+                height: 70vh;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🏗️ CONSORCIO DEJ</h1>
+        <p>Ingeniería y Construcción - Análisis Estructural Profesional</p>
+    </div>
+    
+    <div class="container">
+        <div class="install-prompt" id="installPrompt">
+            <h3>📱 Instalar App</h3>
+            <p>Instala CONSORCIO DEJ en tu dispositivo para acceso rápido</p>
+            <button class="install-btn" id="installBtn">📥 Instalar</button>
+            <button class="install-btn" onclick="hideInstallPrompt()">❌ Cerrar</button>
+        </div>
+        
+        <iframe 
+            src="https://consorcio-dej.streamlit.app" 
+            class="app-frame"
+            title="CONSORCIO DEJ - Análisis Estructural">
+        </iframe>
+    </div>
+    
+    <div class="footer">
+        <p>CONSORCIO DEJ - Software de Análisis Estructural Profesional</p>
+        <p>ACI 318-2025 & E.060 | E.030</p>
+    </div>
+    
+    <script>
+        // PWA Installation
+        let deferredPrompt;
+        
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            document.getElementById('installPrompt').style.display = 'block';
+        });
+        
+        document.getElementById('installBtn').addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    console.log('PWA instalada');
+                }
+                deferredPrompt = null;
+                hideInstallPrompt();
+            }
+        });
+        
+        function hideInstallPrompt() {
+            document.getElementById('installPrompt').style.display = 'none';
+        }
+        
+        // Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then((registration) => {
+                        console.log('SW registrado:', registration);
+                    })
+                    .catch((error) => {
+                        console.log('SW error:', error);
+                    });
+            });
+        }
+        
+        // Offline detection
+        window.addEventListener('online', () => {
+            console.log('App online');
+        });
+        
+        window.addEventListener('offline', () => {
+            console.log('App offline');
+        });
+    </script>
+</body>
+</html>

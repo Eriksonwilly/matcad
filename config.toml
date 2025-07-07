@@ -1,18 +1,24 @@
-[theme]
-primaryColor = "#FFD700"
-backgroundColor = "#FFFFFF"
-secondaryBackgroundColor = "#F0F2F6"
-textColor = "#262730"
-font = "sans serif"
+[global]
+developmentMode = false
 
 [server]
 headless = true
 port = 8501
 enableCORS = false
-enableXsrfProtection = false
+enableXsrfProtection = true
 
 [browser]
 gatherUsageStats = false
+serverAddress = "localhost"
+
+[theme]
+primaryColor = "#FFD700"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F0F2F6"
+textColor = "#262730"
 
 [client]
-showErrorDetails = true 
+showErrorDetails = false
+
+[logger]
+level = "info" 
