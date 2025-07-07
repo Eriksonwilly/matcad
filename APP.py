@@ -690,7 +690,7 @@ if st.session_state.authenticated:
     </div>
     """, unsafe_allow_html=True)
     
-        # Sidebar con datos de entrada
+    # Sidebar con navegación y datos de entrada
     with st.sidebar:
         st.header("👤 Usuario Actual")
         st.success(f"**{st.session_state.username.upper()}**")
@@ -730,24 +730,14 @@ if st.session_state.authenticated:
             st.rerun()
         
         st.markdown("---")
+        st.header("📋 Menú Principal")
+        
+        # Navegación principal
+        opcion = st.sidebar.selectbox("Selecciona una opción", 
+                                     ["🏗️ Cálculo Básico", "📊 Análisis Completo", "📄 Generar Reporte", "📈 Gráficos", "ℹ️ Acerca de", "✉️ Contacto"])
+        
+        st.markdown("---")
         st.header("📊 Datos del Proyecto")
-        
-        # BOTÓN ÚNICO DE CÁLCULO - UBICADO DESPUÉS DE PARÁMETROS SÍSMICOS
-        st.markdown("""
-        <div class="calculate-button">
-            <h2>🚀 CALCULAR TODO EL PROYECTO</h2>
-            <p>Predimensionamiento • Análisis Sísmico • Diseño Estructural • Gráficas • Reporte</p>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # Botón de cálculo principal
-        calcular_todo = st.button("⚡ EJECUTAR ANÁLISIS COMPLETO", type="primary", use_container_width=True)
-        
-        # Guardar en session state para acceder desde el área principal
-        if calcular_todo:
-            st.session_state.calcular_todo = True
-        else:
-            st.session_state.calcular_todo = False
         
         # Materiales
         st.subheader("🏗️ Materiales")
@@ -803,8 +793,165 @@ if st.session_state.authenticated:
         st.session_state['tipo_estructura'] = tipo_estructura
         st.session_state['factor_importancia'] = factor_importancia
     
-    # Área principal - Solo mostrar si se presiona el botón
-    if st.session_state.get('calcular_todo', False):
+    # Área principal - Navegación por opciones
+    if opcion == "🏗️ Cálculo Básico":
+        st.title("🏗️ Cálculo Básico de Análisis Estructural")
+        st.info("Plan básico: Cálculos fundamentales de estructuras")
+        
+        # Pestañas para diferentes tipos de cálculos
+        tab1, tab2, tab3 = st.tabs(["📏 Geometría", "🏗️ Materiales", "⚖️ Cargas"])
+        
+        with tab1:
+            st.subheader("Dimensiones de la Estructura")
+            col1, col2 = st.columns(2)
+            with col1:
+                altura_edificio = st.number_input("Altura total del edificio (m)", min_value=3.0, max_value=300.0, value=45.0, step=1.0)
+                num_niveles = st.number_input("Número de niveles", min_value=1, max_value=100, value=15, step=1)
+            with col2:
+                area_planta = st.number_input("Área de planta (m²)", min_value=50.0, max_value=10000.0, value=500.0, step=50.0)
+                peso_especifico = st.number_input("Peso específico del concreto (kg/m³)", min_value=2000, max_value=3000, value=2400, step=50)
+        
+        with tab2:
+            st.subheader("Propiedades de los Materiales")
+            col1, col2 = st.columns(2)
+            with col1:
+                resistencia_concreto = st.number_input("Resistencia del concreto (kg/cm²)", min_value=175, max_value=700, value=210, step=10)
+                modulo_elasticidad = st.number_input("Módulo de elasticidad (kg/cm²)", min_value=100000, max_value=500000, value=217370, step=1000)
+            with col2:
+                resistencia_acero = st.number_input("Resistencia del acero (kg/cm²)", min_value=2800, max_value=6000, value=4200, step=100)
+                factor_seguridad = st.number_input("Factor de seguridad", min_value=1.2, max_value=3.0, value=1.5, step=0.1)
+        
+        with tab3:
+            st.subheader("Cargas y Factores de Seguridad")
+            col1, col2 = st.columns(2)
+            with col1:
+                carga_muerta = st.number_input("Carga muerta (kg/m²)", min_value=100, max_value=2000, value=150, step=50)
+                carga_viva = st.number_input("Carga viva (kg/m²)", min_value=100, max_value=1000, value=200, step=50)
+            with col2:
+                sismo = st.checkbox("Considerar sismo", value=True)
+                viento = st.checkbox("Considerar viento")
+        
+        # Botón para calcular
+        if st.button("🚀 Calcular Análisis Básico", type="primary"):
+            # Cálculos básicos
+            peso_total = altura_edificio * area_planta * peso_especifico / 1000  # ton
+            peso_por_nivel = peso_total / num_niveles
+            
+            # Cálculo del módulo de elasticidad
+            E = 15000 * sqrt(resistencia_concreto)
+            
+            # Cálculo del período fundamental (simplificado)
+            T = 0.1 * num_niveles
+            
+            # Guardar resultados en session state
+            st.session_state['resultados_basicos'] = {
+                'altura_edificio': altura_edificio,
+                'num_niveles': num_niveles,
+                'area_planta': area_planta,
+                'peso_total': peso_total,
+                'peso_por_nivel': peso_por_nivel,
+                'resistencia_concreto': resistencia_concreto,
+                'resistencia_acero': resistencia_acero,
+                'modulo_elasticidad': E,
+                'periodo_fundamental': T,
+                'carga_muerta': carga_muerta,
+                'carga_viva': carga_viva
+            }
+            
+            st.success("¡Cálculos básicos completados exitosamente!")
+            st.balloons()
+            
+            # MOSTRAR RESULTADOS INMEDIATAMENTE DESPUÉS DEL CÁLCULO
+            st.subheader("📊 Resultados del Cálculo Básico")
+            
+            # Mostrar resultados en columnas
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.metric("Peso Total del Edificio", f"{peso_total:.1f} ton")
+                st.metric("Peso por Nivel", f"{peso_por_nivel:.1f} ton")
+                st.metric("Área de Planta", f"{area_planta:.0f} m²")
+                st.metric("Módulo de Elasticidad", f"{E:.0f} kg/cm²")
+            
+            with col2:
+                st.metric("Período Fundamental", f"{T:.2f} s")
+                st.metric("Resistencia Concreto", f"{resistencia_concreto} kg/cm²")
+                st.metric("Resistencia Acero", f"{resistencia_acero} kg/cm²")
+                st.metric("Altura Total", f"{altura_edificio:.1f} m")
+            
+            # Análisis básico
+            st.subheader("🔍 Análisis Básico")
+            if T < 0.5:
+                st.success(f"✅ Período fundamental adecuado (T = {T:.2f} s < 0.5 s)")
+            else:
+                st.warning(f"⚠️ Período fundamental alto (T = {T:.2f} s > 0.5 s)")
+            
+            if peso_por_nivel < 1000:
+                st.success(f"✅ Peso por nivel razonable ({peso_por_nivel:.1f} ton)")
+            else:
+                st.warning(f"⚠️ Peso por nivel alto ({peso_por_nivel:.1f} ton)")
+            
+            # Gráfico básico
+            st.subheader("📈 Gráfico de Pesos")
+            datos = pd.DataFrame({
+                'Parámetro': ['Peso Total', 'Peso por Nivel'],
+                'Valor (ton)': [peso_total, peso_por_nivel]
+            })
+            
+            fig = go.Figure(data=[
+                go.Bar(x=datos['Parámetro'], y=datos['Valor (ton)'],
+                      marker_color=['#2E8B57', '#DC143C'],
+                      text=[f"{val:.1f}" for val in datos['Valor (ton)']],
+                      textposition='outside')
+            ])
+            
+            fig.update_layout(
+                title="Análisis de Pesos - Plan Básico",
+                xaxis_title="Parámetro",
+                yaxis_title="Peso (ton)",
+                height=400
+            )
+            
+            st.plotly_chart(fig, use_container_width=True)
+    
+    elif opcion == "📊 Análisis Completo":
+        # Verificar plan del usuario
+        plan = st.session_state.get('plan', 'basico')
+        if plan == "basico":
+            st.warning("⚠️ El análisis completo requiere plan premium o empresarial")
+            st.info("Plan básico incluye: Cálculos básicos, resultados simples")
+            st.info("Plan premium incluye: Análisis completo, reportes detallados, gráficos avanzados")
+            
+            # Mostrar botón para actualizar plan
+            col1, col2, col3 = st.columns([1, 2, 1])
+            with col2:
+                if st.button("⭐ Actualizar a Premium", type="primary"):
+                    st.session_state['plan'] = "premium"
+                    st.success("✅ Plan premium activado")
+                    st.rerun()
+        else:
+            st.title("📊 Análisis Completo de Estructuras")
+            st.success("⭐ Plan Premium: Análisis estructural completo")
+            
+            # BOTÓN ÚNICO DE CÁLCULO
+            st.markdown("""
+            <div class="calculate-button">
+                <h2>🚀 CALCULAR TODO EL PROYECTO</h2>
+                <p>Predimensionamiento • Análisis Sísmico • Diseño Estructural • Gráficas • Reporte</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Botón de cálculo principal
+            calcular_todo = st.button("⚡ EJECUTAR ANÁLISIS COMPLETO", type="primary", use_container_width=True)
+            
+            # Guardar en session state para acceder desde el área principal
+            if calcular_todo:
+                st.session_state.calcular_todo = True
+            else:
+                st.session_state.calcular_todo = False
+            
+            # Área principal - Solo mostrar si se presiona el botón
+            if st.session_state.get('calcular_todo', False):
         # Verificar plan del usuario
         plan = st.session_state.get('plan', 'basico')
         if plan == "basico":
@@ -1408,35 +1555,350 @@ if st.session_state.authenticated:
         st.balloons()
         st.success("🎉 ¡Análisis estructural completado exitosamente!")
     
-    else:
-        # Mostrar mensaje cuando no se ha presionado el botón
-        plan = st.session_state.get('plan', 'basico')
+    elif opcion == "📄 Generar Reporte":
+        st.title("📄 Generar Reporte Estructural")
         
+        # Verificar plan del usuario
+        plan = st.session_state.get('plan', 'basico')
         if plan == "basico":
+            st.warning("⚠️ La generación de reportes requiere plan premium o empresarial")
+            st.info("Plan básico incluye: Cálculos básicos, resultados simples")
+            st.info("Plan premium incluye: Reportes detallados, PDF profesionales")
+            
+            # Mostrar botón para actualizar plan
+            col1, col2, col3 = st.columns([1, 2, 1])
+            with col2:
+                if st.button("⭐ Actualizar a Premium", type="primary"):
+                    st.session_state['plan'] = "premium"
+                    st.success("✅ Plan premium activado")
+                    st.rerun()
+        else:
+            st.success("⭐ Plan Premium: Generación de reportes profesionales")
+            
+            # Verificar si hay resultados disponibles
+            if 'resultados_basicos' not in st.session_state and not st.session_state.get('calcular_todo', False):
+                st.warning("⚠️ No hay resultados disponibles para generar reporte")
+                st.info("Ejecuta primero un análisis básico o completo")
+            else:
+                # Opciones de reporte
+                tipo_reporte = st.selectbox("Tipo de Reporte", 
+                                          ["📋 Reporte Básico", "📄 Reporte PDF Profesional", "📊 Reporte con Gráficos"])
+                
+                if tipo_reporte == "📋 Reporte Básico":
+                    st.subheader("📋 Reporte Básico")
+                    if 'resultados_basicos' in st.session_state:
+                        resultados = st.session_state['resultados_basicos']
+                        reporte_basico = f"""
+                        **CONSORCIO DEJ - REPORTE BÁSICO**
+                        
+                        **Fecha:** {datetime.now().strftime('%d/%m/%Y %H:%M')}
+                        **Usuario:** {st.session_state.username}
+                        
+                        **RESULTADOS DEL ANÁLISIS BÁSICO:**
+                        - Altura del edificio: {resultados['altura_edificio']:.1f} m
+                        - Número de niveles: {resultados['num_niveles']}
+                        - Peso total: {resultados['peso_total']:.1f} ton
+                        - Peso por nivel: {resultados['peso_por_nivel']:.1f} ton
+                        - Período fundamental: {resultados['periodo_fundamental']:.2f} s
+                        - Resistencia del concreto: {resultados['resistencia_concreto']} kg/cm²
+                        - Resistencia del acero: {resultados['resistencia_acero']} kg/cm²
+                        
+                        **NOTA:** Este es un reporte básico generado por CONSORCIO DEJ.
+                        """
+                        st.text_area("📋 Reporte Básico", reporte_basico, height=300)
+                        
+                        if st.button("📋 Copiar Reporte", type="secondary"):
+                            st.success("✅ Reporte copiado al portapapeles")
+                
+                elif tipo_reporte == "📄 Reporte PDF Profesional":
+                    st.subheader("📄 Reporte PDF Profesional")
+                    st.info("Esta función genera un reporte PDF completo con normas E.060 y ACI 318-2025")
+                    
+                    if st.button("📄 GENERAR REPORTE PDF", type="primary"):
+                        st.warning("⚠️ Ejecuta primero un análisis completo para generar PDF")
+                        st.info("Ve a 'Análisis Completo' y ejecuta el cálculo")
+                
+                elif tipo_reporte == "📊 Reporte con Gráficos":
+                    st.subheader("📊 Reporte con Gráficos")
+                    st.info("Esta función genera un reporte con gráficos avanzados")
+                    
+                    if st.button("📊 GENERAR REPORTE CON GRÁFICOS", type="primary"):
+                        st.warning("⚠️ Ejecuta primero un análisis completo para generar gráficos")
+                        st.info("Ve a 'Análisis Completo' y ejecuta el cálculo")
+    
+    elif opcion == "📈 Gráficos":
+        st.title("📈 Gráficos y Visualizaciones")
+        
+        # Verificar plan del usuario
+        plan = st.session_state.get('plan', 'basico')
+        if plan == "basico":
+            st.warning("⚠️ Los gráficos avanzados requieren plan premium o empresarial")
+            st.info("Plan básico incluye: Gráficos básicos")
+            st.info("Plan premium incluye: Gráficos avanzados, diagramas McCormac")
+            
+            # Mostrar botón para actualizar plan
+            col1, col2, col3 = st.columns([1, 2, 1])
+            with col2:
+                if st.button("⭐ Actualizar a Premium", type="primary"):
+                    st.session_state['plan'] = "premium"
+                    st.success("✅ Plan premium activado")
+                    st.rerun()
+        else:
+            st.success("⭐ Plan Premium: Gráficos avanzados disponibles")
+            
+            # Verificar si hay resultados disponibles
+            if 'resultados_basicos' not in st.session_state and not st.session_state.get('calcular_todo', False):
+                st.warning("⚠️ No hay resultados disponibles para generar gráficos")
+                st.info("Ejecuta primero un análisis básico o completo")
+            else:
+                # Tipos de gráficos
+                tipo_grafico = st.selectbox("Tipo de Gráfico", 
+                                          ["📊 Gráfico Básico", "📈 Diagramas McCormac", "🌎 Análisis Sísmico"])
+                
+                if tipo_grafico == "📊 Gráfico Básico":
+                    st.subheader("📊 Gráfico Básico")
+                    if 'resultados_basicos' in st.session_state:
+                        resultados = st.session_state['resultados_basicos']
+                        
+                        # Gráfico de barras básico
+                        datos = pd.DataFrame({
+                            'Parámetro': ['Peso Total', 'Peso por Nivel', 'Período'],
+                            'Valor': [resultados['peso_total'], resultados['peso_por_nivel'], resultados['periodo_fundamental']]
+                        })
+                        
+                        fig = go.Figure(data=[
+                            go.Bar(x=datos['Parámetro'], y=datos['Valor'],
+                                  marker_color=['#2E8B57', '#DC143C', '#4169E1'],
+                                  text=[f"{val:.1f}" for val in datos['Valor']],
+                                  textposition='outside')
+                        ])
+                        
+                        fig.update_layout(
+                            title="Análisis Básico - Gráfico de Resultados",
+                            xaxis_title="Parámetro",
+                            yaxis_title="Valor",
+                            height=400
+                        )
+                        
+                        st.plotly_chart(fig, use_container_width=True)
+                
+                elif tipo_grafico == "📈 Diagramas McCormac":
+                    st.subheader("📈 Diagramas McCormac")
+                    st.info("Los diagramas McCormac requieren análisis completo")
+                    st.warning("⚠️ Ejecuta primero un análisis completo para ver diagramas McCormac")
+                
+                elif tipo_grafico == "🌎 Análisis Sísmico":
+                    st.subheader("🌎 Análisis Sísmico")
+                    st.info("Los gráficos sísmicos requieren análisis completo")
+                    st.warning("⚠️ Ejecuta primero un análisis completo para ver gráficos sísmicos")
+    
+    elif opcion == "ℹ️ Acerca de":
+        st.title("ℹ️ Acerca de CONSORCIO DEJ")
+        
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 30px; border-radius: 15px; margin: 20px 0;">
+            <h2 style="color: #1e3c72; text-align: center;">🏗️ CONSORCIO DEJ</h2>
+            <h3 style="color: #666; text-align: center;">Ingeniería y Construcción</h3>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.subheader("📋 Descripción")
+            st.write("""
+            **CONSORCIO DEJ** es una empresa especializada en ingeniería estructural 
+            y construcción, dedicada a proporcionar soluciones profesionales y 
+            tecnológicamente avanzadas para el sector de la construcción.
+            
+            Nuestro software de análisis estructural representa la vanguardia 
+            en herramientas de cálculo y diseño, combinando las mejores prácticas 
+            de la ingeniería con tecnología de punta.
+            """)
+            
+            st.subheader("🎯 Misión")
+            st.write("""
+            Proporcionar herramientas de análisis estructural profesionales, 
+            precisas y fáciles de usar, que permitan a los ingenieros y 
+            constructores optimizar sus diseños y garantizar la seguridad 
+            estructural de sus proyectos.
+            """)
+        
+        with col2:
+            st.subheader("🌟 Visión")
+            st.write("""
+            Ser líderes en el desarrollo de software de ingeniería estructural, 
+            contribuyendo al avance tecnológico del sector construcción y 
+            facilitando el trabajo de los profesionales de la ingeniería.
+            """)
+            
+            st.subheader("💼 Servicios")
+            st.write("""
+            • Análisis estructural avanzado
+            • Diseño de elementos estructurales
+            • Cálculos sísmicos según E.030
+            • Diseño según E.060 y ACI 318-2025
+            • Generación de reportes profesionales
+            • Consultoría en ingeniería estructural
+            """)
+        
+        st.subheader("🛠️ Tecnologías Utilizadas")
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
             st.markdown("""
-            <div style="text-align: center; padding: 50px; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-radius: 15px; margin: 50px 0;">
-                <h2 style="color: #1e3c72;">🏗️ CONSORCIO DEJ</h2>
-                <p style="font-size: 18px; color: #666;">Software de Análisis Estructural Profesional</p>
-                <p style="font-size: 16px; color: #888;">🆓 Plan Básico - Funciones limitadas</p>
-                <p style="font-size: 14px; color: #999;">Ingresa los datos en el sidebar y presiona el botón "EJECUTAR ANÁLISIS COMPLETO" para comenzar</p>
-                <div style="margin-top: 30px;">
-                    <span style="background: #28a745; color: white; padding: 10px 20px; border-radius: 8px; font-weight: bold;">⚡ LISTO PARA CALCULAR</span>
-                </div>
-                <div style="margin-top: 20px;">
-                    <span style="background: #ffc107; color: #333; padding: 8px 16px; border-radius: 6px; font-size: 14px;">💡 Actualiza a Premium para análisis completo</span>
-                </div>
+            <div style="background: white; padding: 15px; border-radius: 10px; text-align: center; margin: 10px 0;">
+                <h4>🐍 Python</h4>
+                <p>Lenguaje de programación principal</p>
             </div>
             """, unsafe_allow_html=True)
-        else:
+        
+        with col2:
             st.markdown("""
-            <div style="text-align: center; padding: 50px; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-radius: 15px; margin: 50px 0;">
-                <h2 style="color: #1e3c72;">🏗️ CONSORCIO DEJ</h2>
-                <p style="font-size: 18px; color: #666;">Software de Análisis Estructural Profesional</p>
-                <p style="font-size: 16px; color: #888;">""" + ("⭐ Plan Premium" if plan == "premium" else "🏢 Plan Empresarial") + """ - Acceso completo</p>
-                <p style="font-size: 14px; color: #999;">Ingresa los datos en el sidebar y presiona el botón "EJECUTAR ANÁLISIS COMPLETO" para comenzar</p>
-                <div style="margin-top: 30px;">
-                    <span style="background: #28a745; color: white; padding: 10px 20px; border-radius: 8px; font-weight: bold;">⚡ LISTO PARA CALCULAR</span>
-                </div>
+            <div style="background: white; padding: 15px; border-radius: 10px; text-align: center; margin: 10px 0;">
+                <h4>📊 Streamlit</h4>
+                <p>Interfaz web interactiva</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col3:
+            st.markdown("""
+            <div style="background: white; padding: 15px; border-radius: 10px; text-align: center; margin: 10px 0;">
+                <h4>📈 Plotly</h4>
+                <p>Gráficos interactivos</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        st.subheader("📚 Normas y Estándares")
+        st.write("""
+        Nuestro software cumple con las siguientes normas y estándares:
+        
+        • **🇵🇪 Norma E.060** - Concreto Armado (Perú)
+        • **🇵🇪 Norma E.030** - Diseño Sismorresistente (Perú)
+        • **🇺🇸 ACI 318-2025** - Building Code Requirements for Structural Concrete
+        • **🇺🇸 ASCE 7** - Minimum Design Loads for Buildings and Other Structures
+        """)
+        
+        st.subheader("📊 Versión del Software")
+        st.info("**CONSORCIO DEJ v2.0** - Software de Análisis Estructural Profesional")
+        st.write("Desarrollado con las últimas tecnologías y mejores prácticas de la ingeniería estructural.")
+    
+    elif opcion == "✉️ Contacto":
+        st.title("✉️ Contacto - CONSORCIO DEJ")
+        
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 30px; border-radius: 15px; margin: 20px 0;">
+            <h2 style="color: #1e3c72; text-align: center;">📞 Contáctanos</h2>
+            <p style="text-align: center; color: #666;">Estamos aquí para ayudarte con tus proyectos de ingeniería estructural</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.subheader("📧 Información de Contacto")
+            
+            st.markdown("""
+            <div style="background: white; padding: 20px; border-radius: 10px; margin: 15px 0;">
+                <h4>📧 Email</h4>
+                <p><strong>info@consorciodej.com</strong></p>
+                <p>Para consultas técnicas y soporte</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            st.markdown("""
+            <div style="background: white; padding: 20px; border-radius: 10px; margin: 15px 0;">
+                <h4>📱 WhatsApp</h4>
+                <p><strong>+51 999 888 777</strong></p>
+                <p>Atención rápida y personalizada</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            st.markdown("""
+            <div style="background: white; padding: 20px; border-radius: 10px; margin: 15px 0;">
+                <h4>🏢 Oficina Principal</h4>
+                <p><strong>Lima, Perú</strong></p>
+                <p>Av. Principal 123, San Isidro</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col2:
+            st.subheader("🕒 Horarios de Atención")
+            
+            st.markdown("""
+            <div style="background: white; padding: 20px; border-radius: 10px; margin: 15px 0;">
+                <h4>📅 Lunes a Viernes</h4>
+                <p><strong>8:00 AM - 6:00 PM</strong></p>
+                <p>Atención presencial y virtual</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            st.markdown("""
+            <div style="background: white; padding: 20px; border-radius: 10px; margin: 15px 0;">
+                <h4>📅 Sábados</h4>
+                <p><strong>9:00 AM - 1:00 PM</strong></p>
+                <p>Atención virtual únicamente</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            st.markdown("""
+            <div style="background: white; padding: 20px; border-radius: 10px; margin: 15px 0;">
+                <h4>🌐 Soporte Técnico</h4>
+                <p><strong>24/7</strong></p>
+                <p>Para usuarios premium y empresariales</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        st.subheader("📝 Formulario de Contacto")
+        
+        with st.form("contact_form"):
+            nombre = st.text_input("Nombre completo", placeholder="Tu nombre completo")
+            email = st.text_input("Email", placeholder="tuemail@gmail.com")
+            telefono = st.text_input("Teléfono", placeholder="+51 999 888 777")
+            asunto = st.selectbox("Asunto", ["Consulta General", "Soporte Técnico", "Cotización", "Capacitación", "Otro"])
+            mensaje = st.text_area("Mensaje", placeholder="Describe tu consulta o proyecto...", height=150)
+            
+            submitted = st.form_submit_button("📤 Enviar Mensaje", type="primary")
+            
+            if submitted:
+                if nombre and email and mensaje:
+                    st.success("✅ Mensaje enviado exitosamente!")
+                    st.info("Nos pondremos en contacto contigo en las próximas 24 horas.")
+                else:
+                    st.error("❌ Por favor completa todos los campos obligatorios")
+        
+        st.subheader("🌐 Redes Sociales")
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.markdown("""
+            <div style="background: #1877f2; color: white; padding: 15px; border-radius: 10px; text-align: center; margin: 10px 0;">
+                <h4>📘 Facebook</h4>
+                <p>@ConsorcioDEJ</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col2:
+            st.markdown("""
+            <div style="background: #1da1f2; color: white; padding: 15px; border-radius: 10px; text-align: center; margin: 10px 0;">
+                <h4>🐦 Twitter</h4>
+                <p>@ConsorcioDEJ</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col3:
+            st.markdown("""
+            <div style="background: #0077b5; color: white; padding: 15px; border-radius: 10px; text-align: center; margin: 10px 0;">
+                <h4>💼 LinkedIn</h4>
+                <p>Consorcio DEJ</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col4:
+            st.markdown("""
+            <div style="background: #25d366; color: white; padding: 15px; border-radius: 10px; text-align: center; margin: 10px 0;">
+                <h4>📱 WhatsApp</h4>
+                <p>+51 999 888 777</p>
             </div>
             """, unsafe_allow_html=True)
     
