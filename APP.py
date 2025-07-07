@@ -462,9 +462,24 @@ else:
     
     # Mostrar plan actual
     if st.session_state['plan'] == "gratuito":
-        st.sidebar.info("🆓 Plan Gratuito")
+        st.sidebar.info("🆓 Plan Gratuito - Funciones limitadas")
+        st.sidebar.write("Para acceder a todas las funciones, actualiza a Premium")
+        
+        # Información sobre cómo acceder al plan premium
+        st.sidebar.markdown("---")
+        st.sidebar.subheader("🔑 Acceso Premium")
+        st.sidebar.write("**Usuario:** admin")
+        st.sidebar.write("**Contraseña:** admin123")
+        st.sidebar.info("Cierra sesión y vuelve a iniciar con las credenciales admin")
     else:
-        st.sidebar.success("⭐ Plan Premium")
+        st.sidebar.success("⭐ Plan Premium - Acceso completo")
+        
+        # Información para administradores
+        st.sidebar.markdown("---")
+        st.sidebar.subheader("👨‍💼 Panel de Administrador")
+        st.sidebar.write("**Usuario actual:** " + st.session_state['user'])
+        st.sidebar.write("**Plan:** Premium")
+        st.sidebar.success("Acceso completo a todas las funciones")
     
     opcion = st.sidebar.selectbox("Selecciona una opción", 
                                  ["🏗️ Cálculo Básico", "📊 Análisis Completo", "📄 Generar Reporte", "📚 Fórmulas de Diseño Estructural", "📈 Gráficos", "ℹ️ Acerca de", "✉️ Contacto"])
@@ -520,15 +535,150 @@ else:
 # MENÚ PRINCIPAL
 # =====================
 if opcion == "🏗️ Cálculo Básico":
-    st.header("🏗️ Cálculo Básico de Análisis Estructural")
-    peso_total = num_pisos * L_viga * num_vanos * h_piso * f_c / 1000
-    st.write(f"**Peso total estimado:** {peso_total:.1f} ton")
-    st.write(f"**f'c:** {f_c} kg/cm² | **fy:** {f_y} kg/cm²")
-    st.write(f"**Luz libre:** {L_viga} m | **Pisos:** {num_pisos}")
-    st.write(f"**Carga Muerta:** {CM} kg/m² | **Carga Viva:** {CV} kg/m²")
-    st.write(f"**Zona Sísmica:** {zona_sismica} | **Tipo de Suelo:** {tipo_suelo}")
-    st.write(f"**Tipo de Estructura:** {tipo_estructura}")
-    st.success("Cálculo básico completado.")
+    st.title("Cálculo Básico de Análisis Estructural")
+    st.info("Plan gratuito: Cálculos básicos de análisis estructural")
+    
+    # Pestañas para diferentes tipos de cálculos
+    tab1, tab2, tab3 = st.tabs(["📏 Propiedades", "🏗️ Materiales", "⚖️ Cargas"])
+    
+    with tab1:
+        st.subheader("Propiedades del Proyecto")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.write(f"**Resistencia del concreto (f'c):** {f_c} kg/cm²")
+            st.write(f"**Resistencia del acero (fy):** {f_y} kg/cm²")
+            st.write(f"**Luz libre de vigas:** {L_viga} m")
+        with col2:
+            st.write(f"**Altura de piso:** {h_piso} m")
+            st.write(f"**Número de pisos:** {num_pisos}")
+            st.write(f"**Número de vanos:** {num_vanos}")
+    
+    with tab2:
+        st.subheader("Propiedades de los Materiales")
+        col1, col2 = st.columns(2)
+        with col1:
+            props_concreto = calcular_propiedades_concreto(f_c)
+            st.write(f"**Módulo de elasticidad del concreto (Ec):** {props_concreto['Ec']:.0f} kg/cm²")
+            st.write(f"**Deformación última del concreto (εcu):** {props_concreto['ecu']}")
+            st.write(f"**Resistencia a tracción (fr):** {props_concreto['fr']:.1f} kg/cm²")
+        with col2:
+            props_acero = calcular_propiedades_acero(f_y)
+            st.write(f"**Módulo de elasticidad del acero (Es):** {props_acero['Es']:,} kg/cm²")
+            st.write(f"**Deformación de fluencia (εy):** {props_acero['ey']:.4f}")
+            st.write(f"**β1:** {props_concreto['beta1']:.3f}")
+    
+    with tab3:
+        st.subheader("Cargas y Factores de Seguridad")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.write(f"**Carga Muerta:** {CM} kg/m²")
+            st.write(f"**Carga Viva:** {CV} kg/m²")
+            st.write(f"**Zona Sísmica:** {zona_sismica}")
+        with col2:
+            st.write(f"**Tipo de Suelo:** {tipo_suelo}")
+            st.write(f"**Tipo de Estructura:** {tipo_estructura}")
+            st.write(f"**Factor de Importancia:** {factor_importancia}")
+    
+    # Botón para calcular
+    if st.button("🚀 Calcular Análisis Básico", type="primary"):
+        # Cálculos básicos
+        peso_total = float(num_pisos) * float(L_viga) * float(num_vanos) * float(h_piso) * float(f_c) / 1000
+        
+        # Guardar resultados básicos
+        st.session_state['resultados_basicos'] = {
+            'peso_total': peso_total,
+            'f_c': f_c,
+            'f_y': f_y,
+            'L_viga': L_viga,
+            'num_pisos': num_pisos,
+            'CM': CM,
+            'CV': CV,
+            'zona_sismica': zona_sismica,
+            'tipo_suelo': tipo_suelo,
+            'tipo_estructura': tipo_estructura,
+            'Ec': props_concreto['Ec'],
+            'Es': props_acero['Es'],
+            'ecu': props_concreto['ecu'],
+            'fr': props_concreto['fr'],
+            'beta1': props_concreto['beta1'],
+            'ey': props_acero['ey']
+        }
+        
+        st.success("¡Cálculos básicos completados exitosamente!")
+        st.balloons()
+        
+        # MOSTRAR RESULTADOS INMEDIATAMENTE DESPUÉS DEL CÁLCULO
+        st.subheader("📊 Resultados del Cálculo Básico")
+        
+        # Mostrar resultados en columnas
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.metric("Peso Total Estimado", f"{peso_total:.1f} ton")
+            st.metric("Módulo de Elasticidad del Concreto", f"{props_concreto['Ec']:.0f} kg/cm²")
+            st.metric("Módulo de Elasticidad del Acero", f"{props_acero['Es']:,} kg/cm²")
+            st.metric("Resistencia a Tracción", f"{props_concreto['fr']:.1f} kg/cm²")
+        
+        with col2:
+            st.metric("Deformación Última del Concreto", f"{props_concreto['ecu']}")
+            st.metric("Deformación de Fluencia", f"{props_acero['ey']:.4f}")
+            st.metric("β1", f"{props_concreto['beta1']:.3f}")
+            st.metric("Altura Total", f"{float(num_pisos) * float(h_piso):.1f} m")
+        
+        # Análisis de estabilidad
+        st.subheader("🔍 Análisis de Estabilidad")
+        if peso_total < 1000:
+            st.success(f"✅ El peso total es aceptable (FS = {peso_total:.1f} ton < 1000 ton)")
+        else:
+            st.warning(f"⚠️ El peso total es alto (FS = {peso_total:.1f} ton > 1000 ton) - Revisar dimensiones")
+        
+        # Gráfico básico
+        st.subheader("📈 Gráfico de Propiedades")
+        datos = pd.DataFrame({
+            'Propiedad': ['Ec (kg/cm²)', 'Es (kg/cm²)', 'fr (kg/cm²)', 'β1'],
+            'Valor': [props_concreto['Ec']/1000, props_acero['Es']/1000000, props_concreto['fr'], props_concreto['beta1']]
+        })
+        
+        # Gráfico de barras mejorado
+        if PLOTLY_AVAILABLE:
+            fig = px.bar(datos, x='Propiedad', y='Valor', 
+                        title="Propiedades de los Materiales - Plan Gratuito",
+                        color='Propiedad',
+                        color_discrete_map={
+                            'Ec (kg/cm²)': '#2E8B57', 
+                            'Es (kg/cm²)': '#DC143C', 
+                            'fr (kg/cm²)': '#4169E1',
+                            'β1': '#FFD700'
+                        })
+            
+            # Personalizar el gráfico
+            fig.update_layout(
+                xaxis_title="Propiedad",
+                yaxis_title="Valor",
+                showlegend=True,
+                height=400
+            )
+            
+            # Agregar valores en las barras
+            fig.update_traces(texttemplate='%{y:.2f}', textposition='outside')
+            
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            # Gráfico alternativo con matplotlib
+            fig, ax = plt.subplots(figsize=(10, 6))
+            bars = ax.bar(datos['Propiedad'], datos['Valor'], 
+                         color=['#2E8B57', '#DC143C', '#4169E1', '#FFD700'])
+            ax.set_title("Propiedades de los Materiales - Plan Gratuito")
+            ax.set_xlabel("Propiedad")
+            ax.set_ylabel("Valor")
+            
+            # Agregar valores en las barras
+            for bar in bars:
+                height = bar.get_height()
+                ax.text(bar.get_x() + bar.get_width()/2., height + 0.1,
+                       f'{height:.2f}', ha='center', va='bottom')
+            
+            st.pyplot(fig)
 
 elif opcion == "📊 Análisis Completo":
     # Verificar acceso basado en plan del usuario
@@ -553,6 +703,38 @@ elif opcion == "📊 Análisis Completo":
         st.title("📊 Análisis Completo de Estructuras")
         st.success("⭐ Plan Premium: Análisis completo con todas las verificaciones")
         
+        # Datos de entrada completos
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.subheader("Propiedades del Concreto")
+            st.write(f"**Resistencia del concreto (f'c):** {f_c} kg/cm²")
+            st.write(f"**Resistencia del acero (fy):** {f_y} kg/cm²")
+            st.write(f"**Luz libre de vigas:** {L_viga} m")
+            st.write(f"**Altura de piso:** {h_piso} m")
+            
+            st.subheader("Dimensiones del Proyecto")
+            st.write(f"**Número de pisos:** {num_pisos}")
+            st.write(f"**Número de vanos:** {num_vanos}")
+            st.write(f"**Carga Muerta:** {CM} kg/m²")
+            st.write(f"**Carga Viva:** {CV} kg/m²")
+            
+        with col2:
+            st.subheader("Factores de Diseño")
+            st.write(f"**Zona Sísmica:** {zona_sismica}")
+            st.write(f"**Tipo de Suelo:** {tipo_suelo}")
+            st.write(f"**Tipo de Estructura:** {tipo_estructura}")
+            st.write(f"**Factor de Importancia:** {factor_importancia}")
+            
+            st.subheader("Información Adicional")
+            st.info("El análisis completo incluye:")
+            st.write("✅ Cálculo de propiedades de materiales")
+            st.write("✅ Predimensionamiento automático")
+            st.write("✅ Verificaciones de estabilidad")
+            st.write("✅ Gráficos interactivos")
+            st.write("✅ Reportes técnicos detallados")
+        
+        # Botón para ejecutar análisis completo
         if st.button("🔬 Ejecutar Análisis Completo", type="primary"):
             # Cálculos completos
             props_concreto = calcular_propiedades_concreto(f_c)
@@ -560,7 +742,7 @@ elif opcion == "📊 Análisis Completo":
             predim = calcular_predimensionamiento(L_viga, num_pisos, num_vanos, CM, CV, f_c, f_y)
             
             # Calcular peso total
-            peso_total = num_pisos * L_viga * num_vanos * h_piso * f_c / 1000
+            peso_total = float(num_pisos) * float(L_viga) * float(num_vanos) * float(h_piso) * float(f_c) / 1000
             
             # Guardar resultados completos
             resultados_completos = {
