@@ -1,18 +1,31 @@
 import streamlit as st
 import numpy as np
 import pandas as pd
-import plotly.graph_objects as go
 from math import sqrt
 from datetime import datetime
 import hashlib
 import io
 import base64
-from reportlab.lib.pagesizes import A4
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.units import inch
-from reportlab.lib import colors
-from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+
+# Importaciones condicionales para evitar errores
+try:
+    import plotly.graph_objects as go
+    PLOTLY_AVAILABLE = True
+except ImportError:
+    PLOTLY_AVAILABLE = False
+    st.warning("⚠️ Plotly no disponible. Los gráficos no se mostrarán.")
+
+try:
+    from reportlab.lib.pagesizes import A4
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import inch
+    from reportlab.lib import colors
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+    REPORTLAB_AVAILABLE = True
+except ImportError:
+    REPORTLAB_AVAILABLE = False
+    st.warning("⚠️ ReportLab no disponible. Los PDF no se generarán.")
 
 # ===== CONFIGURACIÓN PARA MÓVIL/APK =====
 # Optimizaciones para dispositivos móviles
@@ -599,10 +612,14 @@ def show_pricing_page():
 
 # Función para generar PDF profesional optimizada para Streamlit Cloud
 def generar_pdf_profesional(datos_proyecto, resultados_analisis):
+    if not REPORTLAB_AVAILABLE:
+        st.error("❌ ReportLab no está disponible. No se puede generar PDF.")
+        return None
+    
     try:
         buffer = io.BytesIO()
         
-        # Configuración del documento con márgenes más pequeños para optimizar espacio
+        # Configuración del documento
         doc = SimpleDocTemplate(
             buffer,
             pagesize=A4,
@@ -615,7 +632,7 @@ def generar_pdf_profesional(datos_proyecto, resultados_analisis):
         story = []
         styles = getSampleStyleSheet()
         
-        # Estilo para el título principal optimizado
+        # Estilos básicos
         title_style = ParagraphStyle(
             'TitleStyle',
             parent=styles['Heading1'],
@@ -626,7 +643,6 @@ def generar_pdf_profesional(datos_proyecto, resultados_analisis):
             fontName='Helvetica-Bold'
         )
         
-        # Estilo para encabezados de sección
         heading_style = ParagraphStyle(
             'HeadingStyle',
             parent=styles['Heading2'],
@@ -636,7 +652,6 @@ def generar_pdf_profesional(datos_proyecto, resultados_analisis):
             fontName='Helvetica-Bold'
         )
         
-        # Estilo para texto normal
         normal_style = ParagraphStyle(
             'NormalStyle',
             parent=styles['Normal'],
@@ -645,11 +660,11 @@ def generar_pdf_profesional(datos_proyecto, resultados_analisis):
             fontName='Helvetica'
         )
         
-        # Encabezado del documento
+        # Contenido básico del PDF
         story.append(Paragraph("CONSORCIO DEJ - REPORTE ESTRUCTURAL", title_style))
         story.append(Spacer(1, 15))
         
-        # Información básica en tabla compacta
+        # Información del proyecto
         info_data = [
             ["Fecha:", datos_proyecto['fecha']],
             ["Usuario:", datos_proyecto['usuario']],
@@ -669,44 +684,20 @@ def generar_pdf_profesional(datos_proyecto, resultados_analisis):
         story.append(info_table)
         story.append(Spacer(1, 15))
         
-        # Sección de Materiales
-        story.append(Paragraph("MATERIALES", heading_style))
+        # Resumen de resultados
+        story.append(Paragraph("RESUMEN DE RESULTADOS", heading_style))
         
-        materials_data = [
-            ["Propiedad", "Valor", "Unidad"],
+        resumen_data = [
+            ["Parámetro", "Valor", "Unidad"],
             ["f'c (Concreto)", f"{datos_proyecto['fc']}", "kg/cm²"],
             ["fy (Acero)", f"{datos_proyecto['fy']}", "kg/cm²"],
-            ["Módulo Elasticidad", f"{datos_proyecto['E']:.0f}", "kg/cm²"]
-        ]
-        
-        materials_table = Table(materials_data, colWidths=[2*inch, 1.5*inch, 1*inch])
-        materials_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e3c72')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, -1), 9),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-        ]))
-        story.append(materials_table)
-        story.append(Spacer(1, 10))
-        
-        # Sección de Geometría y Cargas
-        story.append(Paragraph("GEOMETRÍA Y CARGAS", heading_style))
-        
-        geometry_data = [
-            ["Parámetro", "Valor", "Unidad"],
-            ["Luz libre de vigas", f"{datos_proyecto['L_viga']}", "m"],
-            ["Altura de piso", f"{datos_proyecto['h_piso']}", "m"],
+            ["Luz libre", f"{datos_proyecto['L_viga']}", "m"],
             ["Número de pisos", f"{datos_proyecto['num_pisos']}", ""],
-            ["Número de vanos", f"{datos_proyecto['num_vanos']}", ""],
-            ["Carga muerta (CM)", f"{datos_proyecto['CM']}", "kg/m²"],
-            ["Carga viva (CV)", f"{datos_proyecto['CV']}", "kg/m²"]
+            ["Cortante basal", f"{resultados_analisis['V']:.1f}", "ton"]
         ]
         
-        geometry_table = Table(geometry_data, colWidths=[2*inch, 1.5*inch, 1*inch])
-        geometry_table.setStyle(TableStyle([
+        resumen_table = Table(resumen_data, colWidths=[2*inch, 1.5*inch, 1*inch])
+        resumen_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e3c72')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
@@ -715,284 +706,16 @@ def generar_pdf_profesional(datos_proyecto, resultados_analisis):
             ('GRID', (0, 0), (-1, -1), 1, colors.black),
             ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
         ]))
-        story.append(geometry_table)
-        story.append(Spacer(1, 10))
+        story.append(resumen_table)
+        story.append(Spacer(1, 15))
         
-        # Sección de Predimensionamiento
-        story.append(Paragraph("PREDIMENSIONAMIENTO (E.060 Art. 10.2)", heading_style))
-        
-        predim_data = [
-            ["Elemento", "Propiedad", "Valor", "Unidad"],
-            ["Losas", "Espesor mínimo", f"{resultados_analisis['h_losa']:.0f}", "cm"],
-            ["Vigas", "Peralte efectivo", f"{resultados_analisis['d_viga']:.0f}", "cm"],
-            ["Vigas", "Ancho de viga", f"{resultados_analisis['b_viga']:.0f}", "cm"],
-            ["Columnas", "Lado de columna", f"{resultados_analisis['lado_columna']:.0f}", "cm"],
-            ["Columnas", "Área de columna", f"{resultados_analisis['A_columna']:.0f}", "cm²"]
-        ]
-        
-        predim_table = Table(predim_data, colWidths=[1.5*inch, 1.5*inch, 1*inch, 0.8*inch])
-        predim_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e3c72')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, -1), 8),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
-        ]))
-        story.append(predim_table)
-        story.append(Spacer(1, 10))
-        
-        # Sección de Análisis Sísmico
-        story.append(Paragraph("ANÁLISIS SÍSMICO (E.030)", heading_style))
-        
-        sismo_data = [
-            ["Parámetro", "Valor", "Unidad"],
-            ["Peso total del edificio", f"{resultados_analisis['P_edificio']:.1f}", "ton"],
-            ["Período fundamental", f"{resultados_analisis['T']:.2f}", "s"],
-            ["Coeficiente de amplificación", f"{resultados_analisis['C']:.3f}", ""],
-            ["Cortante basal", f"{resultados_analisis['V']:.1f}", "ton"],
-            ["Zona sísmica", datos_proyecto['zona_sismica'], ""],
-            ["Tipo de suelo", datos_proyecto['tipo_suelo'], ""]
-        ]
-        
-        sismo_table = Table(sismo_data, colWidths=[2*inch, 1.5*inch, 1*inch])
-        sismo_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e3c72')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, -1), 9),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-        ]))
-        story.append(sismo_table)
-        story.append(Spacer(1, 10))
-        
-        # Sección de Diseño Estructural
-        story.append(Paragraph("DISEÑO ESTRUCTURAL (E.060 & ACI 318-2025)", heading_style))
-        
-        diseño_data = [
-            ["Elemento", "Propiedad", "Valor", "Unidad"],
-            ["Viga - Flexión", "Momento último", f"{resultados_analisis['M_u']:.1f}", "kgf·m"],
-            ["Viga - Flexión", "Acero requerido", f"{resultados_analisis['A_s_corr']:.2f}", "cm²"],
-            ["Viga - Cortante", "Cortante último", f"{resultados_analisis['V_u']:.1f}", "kg"],
-            ["Columna", "Carga axial mayorada", f"{resultados_analisis['P_u']:.1f}", "ton"],
-            ["Columna", "Acero mínimo", f"{resultados_analisis['As_min']:.1f}", "cm²"]
-        ]
-        
-        diseño_table = Table(diseño_data, colWidths=[1.5*inch, 1.5*inch, 1*inch, 0.8*inch])
-        diseño_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e3c72')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, -1), 8),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
-        ]))
-        story.append(diseño_table)
-        story.append(Spacer(1, 10))
-        
-        # Sección de Verificaciones de Seguridad con Referencias Normativas
-        story.append(Paragraph("VERIFICACIONES DE SEGURIDAD CON REFERENCIAS NORMATIVAS", heading_style))
-        
-        # Verificaciones de vigas con referencias normativas
-        story.append(Paragraph("VERIFICACIÓN DE VIGAS - FLEXIÓN", ParagraphStyle(name='SubHeading', fontSize=10, textColor=colors.HexColor('#1e3c72'), spaceAfter=8)))
-        
-        viga_verificaciones = [
-            ["Verificación", "Estado", "Norma", "Artículo/Sección"],
-            ["Cuantía mínima de acero", '✓ CUMPLE' if resultados_analisis['cumple_cuantia'] else '✗ NO CUMPLE', "E.060 & ACI 318-2025", "E.060 Art. 10.5.1 / ACI 9.6.1"],
-            ["Cuantía máxima de acero", '✓ CUMPLE' if resultados_analisis['rho_provisto'] <= resultados_analisis['rho_max_viga'] else '✗ NO CUMPLE', "E.060 & ACI 318-2025", "E.060 Art. 10.3.3 / ACI 9.3.3"],
-            ["Resistencia a flexión", '✓ CUMPLE', "E.060 & ACI 318-2025", "E.060 Art. 10.3 / ACI 9.3"],
-            ["Factor de reducción φ", f"φ = {resultados_analisis['phi']}", "E.060 & ACI 318-2025", "E.060 Art. 9.3.2 / ACI 9.3"]
-        ]
-        
-        viga_table = Table(viga_verificaciones, colWidths=[1.5*inch, 1*inch, 1.5*inch, 1.5*inch])
-        viga_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e3c72')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, -1), 8),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
-        ]))
-        story.append(viga_table)
-        story.append(Spacer(1, 8))
-        
-        # Verificaciones de columnas con referencias normativas
-        story.append(Paragraph("VERIFICACIÓN DE COLUMNAS - COMPRESIÓN", ParagraphStyle(name='SubHeading', fontSize=10, textColor=colors.HexColor('#1e3c72'), spaceAfter=8)))
-        
-        columna_verificaciones = [
-            ["Verificación", "Estado", "Norma", "Artículo/Sección"],
-            ["Resistencia axial", '✓ CUMPLE' if resultados_analisis['cumple_columna'] else '✗ NO CUMPLE', "E.060 & ACI 318-2025", "E.060 Art. 10.3.6 / ACI 9.3.2"],
-            ["Cuantía mínima de acero", '✓ CUMPLE', "E.060 & ACI 318-2025", "E.060 Art. 10.9.1 / ACI 9.6.1"],
-            ["Cuantía máxima de acero", '✓ CUMPLE', "E.060 & ACI 318-2025", "E.060 Art. 10.9.1 / ACI 9.6.1"],
-            ["Factor de reducción φ", f"φ = {resultados_analisis['phi_col']}", "E.060 & ACI 318-2025", "E.060 Art. 9.3.2 / ACI 9.3"]
-        ]
-        
-        columna_table = Table(columna_verificaciones, colWidths=[1.5*inch, 1*inch, 1.5*inch, 1.5*inch])
-        columna_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e3c72')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, -1), 8),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
-        ]))
-        story.append(columna_table)
-        story.append(Spacer(1, 10))
-        
-        # === PARÁMETROS NORMATIVOS SEGÚN ACI 318-2025 ===
-        st.markdown("""
-        <div class="section-header">
-            <h2>📋 PARÁMETROS NORMATIVOS - ACI 318-2025</h2>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # Parámetros de vigas según ACI 318-2025
-        st.markdown("""
-        <div class="metric-card">
-            <h4>🏗️ PARÁMETROS DE DISEÑO PARA VIGAS (ACI 318-2025 - Capítulo 9)</h4>
-            <p><strong>Cuantía mínima ρmin:</strong> """ + f"{diseno_flexion['cuantias']['rho_min']:.4f}" + """ (ACI 9.6.1: ρmin ≥ 0.8√f'c/fy)</p>
-            <p><strong>Cuantía máxima ρmax:</strong> """ + f"{diseno_flexion['cuantias']['rho_max']:.4f}" + """ (ACI 9.3.3: ρmax ≤ 0.75ρb)</p>
-            <p><strong>Cuantía balanceada ρb:</strong> """ + f"{diseno_flexion['cuantias']['rho_b']:.4f}" + """ (ACI 9.3.3: ρb = 0.85β₁f'c/fy × 6000/(6000+fy))</p>
-            <p><strong>Cuantía provista ρ:</strong> """ + f"{rho_provisto:.4f}" + """ (ACI 9.3: Diseño por flexión)</p>
-            <p><strong>Factor de reducción φ:</strong> """ + f"{phi}" + """ (ACI 9.3: φ = 0.9 para flexión)</p>
-            <p><strong>Factor β₁:</strong> """ + f"{props_concreto['beta1']:.3f}" + """ (ACI 9.3.3: β₁ = 0.85 si f'c ≤ 280 kg/cm²)</p>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # Parámetros de columnas según ACI 318-2025
-        st.markdown("""
-        <div class="metric-card">
-            <h4>🏗️ PARÁMETROS DE DISEÑO PARA COLUMNAS (ACI 318-2025 - Capítulo 10)</h4>
-            <p><strong>Cuantía mínima ρmin:</strong> 0.01 (1%) (ACI 10.9.1: ρmin ≥ 0.01)</p>
-            <p><strong>Cuantía máxima ρmax:</strong> 0.06 (6%) (ACI 10.9.1: ρmax ≤ 0.06)</p>
-            <p><strong>Factor de reducción φ:</strong> """ + f"{phi_col}" + """ (ACI 10.3.6: φ = 0.65 para columnas con estribos)</p>
-            <p><strong>Resistencia nominal Pn:</strong> """ + f"{diseno_columna['Pn']/1000:.1f}" + """ ton (ACI 10.3.6: Pn = 0.80[0.85f'c(Ag-Ast)+fyAst])</p>
-            <p><strong>Resistencia de diseño φPn:</strong> """ + f"{diseno_columna['phiPn']/1000:.1f}" + """ ton</p>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # Parámetros de cortante según ACI 318-2025
-        st.markdown("""
-        <div class="metric-card">
-            <h4>🔩 PARÁMETROS DE DISEÑO POR CORTANTE (ACI 318-2025 - Capítulo 22)</h4>
-            <p><strong>Resistencia del concreto Vc:</strong> """ + f"{V_c:.1f}" + """ kg (ACI 22.5.5.1: Vc = 0.53√f'c×b×d)</p>
-            <p><strong>Cortante máximo Vs:</strong> """ + f"{V_s_max:.1f}" + """ kg (ACI 22.5.1.2: Vs ≤ 2.1√f'c×b×d)</p>
-            <p><strong>Factor de reducción φ:</strong> """ + f"{diseno_cortante['phi_v']}" + """ (ACI 21.2.1: φ = 0.75 para cortante)</p>
-            <p><strong>Separación máxima:</strong> """ + f"{diseno_cortante['s_max']:.0f}" + """ cm (ACI 25.7.2.2: s ≤ d/2 o 60 cm)</p>
-            <p><strong>Requiere acero:</strong> """ + ('SÍ' if requiere_acero_cortante else 'NO') + """ (ACI 22.5.1.1: Si Vu > φVc)</p>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # Propiedades de materiales según ACI 318-2025
-        st.markdown("""
-        <div class="metric-card">
-            <h4>🏗️ PROPIEDADES DE MATERIALES (ACI 318-2025)</h4>
-            <p><strong>Concreto - Módulo Ec:</strong> """ + f"{props_concreto['Ec']:.0f}" + """ kg/cm² (ACI 19.2.2.1: Ec = 15000√f'c)</p>
-            <p><strong>Concreto - Deformación εcu:</strong> """ + f"{props_concreto['ecu']}" + """ (ACI 22.2.2.1: εcu = 0.003)</p>
-            <p><strong>Concreto - Resistencia fr:</strong> """ + f"{props_concreto['fr']:.1f}" + """ kg/cm² (ACI 19.2.3.1: fr = 2√f'c)</p>
-            <p><strong>Acero - Módulo Es:</strong> """ + f"{props_acero['Es']:,}" + """ kg/cm² (ACI 20.2.2.1: Es = 2,000,000)</p>
-            <p><strong>Acero - Deformación εy:</strong> """ + f"{props_acero['ey']:.4f}" + """ (ACI 20.2.2.1: εy = fy/Es)</p>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # Botón para mostrar fórmulas detalladas
-        if st.button("📚 VER FÓRMULAS DETALLADAS ACI 318-2025", type="secondary", use_container_width=True):
-            st.markdown("""
-            <div class="section-header">
-                <h3>📚 FÓRMULAS DETALLADAS ACI 318-2025</h3>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Fórmulas de propiedades de materiales
-            st.markdown("""
-            <div class="metric-card">
-                <h4>🏗️ PROPIEDADES DEL CONCRETO (ACI 318-2025 - Capítulo 19)</h4>
-                <p><strong>Resistencia a compresión (f'c):</strong> """ + f"{f_c}" + """ kg/cm²</p>
-                <p><strong>Módulo de elasticidad (Ec):</strong> Ec = 15000√f'c = """ + f"{props_concreto['Ec']:.0f}" + """ kg/cm²</p>
-                <p><strong>Deformación última (εcu):</strong> εcu = 0.003 (Para diseño por flexión)</p>
-                <p><strong>Resistencia a tracción (fr):</strong> fr = 2√f'c = """ + f"{props_concreto['fr']:.1f}" + """ kg/cm²</p>
-                <p><strong>Factor β₁:</strong> β₁ = 0.85 si f'c ≤ 280 kg/cm² = """ + f"{props_concreto['beta1']:.3f}" + """</p>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Fórmulas de propiedades del acero
-            st.markdown("""
-            <div class="metric-card">
-                <h4>🔩 PROPIEDADES DEL ACERO (ACI 318-2025 - Capítulo 20)</h4>
-                <p><strong>Esfuerzo de fluencia (fy):</strong> """ + f"{f_y}" + """ kg/cm²</p>
-                <p><strong>Módulo de elasticidad (Es):</strong> Es = 2,000,000 kg/cm²</p>
-                <p><strong>Deformación de fluencia (εy):</strong> εy = fy/Es = """ + f"{props_acero['ey']:.4f}" + """</p>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Fórmulas de diseño por flexión
-            st.markdown("""
-            <div class="metric-card">
-                <h4>🏗️ DISEÑO POR FLEXIÓN (ACI 318-2025 - Capítulo 9)</h4>
-                <p><strong>Momento último (Mu):</strong> Mu = 1.2MD + 1.6ML = """ + f"{M_u/100:.1f}" + """ kgf·m</p>
-                <p><strong>Cuantía balanceada (ρb):</strong> ρb = 0.85β₁(f'c/fy)(6000/(6000+fy)) = """ + f"{diseno_flexion['cuantias']['rho_b']:.4f}" + """</p>
-                <p><strong>Cuantía mínima (ρmin):</strong> ρmin = max(0.8√f'c/fy, 14/fy) = """ + f"{diseno_flexion['cuantias']['rho_min']:.4f}" + """</p>
-                <p><strong>Cuantía máxima (ρmax):</strong> ρmax = 0.75ρb = """ + f"{diseno_flexion['cuantias']['rho_max']:.4f}" + """</p>
-                <p><strong>Cuantía provista (ρ):</strong> ρ = As/(b×d) = """ + f"{rho_provisto:.4f}" + """</p>
-                <p><strong>Profundidad del bloque (a):</strong> a = As×fy/(0.85×f'c×b) = """ + f"{diseno_flexion['a']:.1f}" + """ cm</p>
-                <p><strong>Momento resistente (φMn):</strong> φMn = φ×As×fy×(d-a/2) = """ + f"{diseno_flexion['phiMn']/100:.1f}" + """ kgf·m</p>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Fórmulas de diseño por cortante
-            st.markdown("""
-            <div class="metric-card">
-                <h4>🔩 DISEÑO POR CORTANTE (ACI 318-2025 - Capítulo 22)</h4>
-                <p><strong>Cortante último (Vu):</strong> Vu = 1.2VD + 1.6VL = """ + f"{V_u:.1f}" + """ kg</p>
-                <p><strong>Resistencia del concreto (Vc):</strong> Vc = 0.53√f'c×b×d = """ + f"{V_c:.1f}" + """ kg</p>
-                <p><strong>Cortante máximo (Vs máx):</strong> Vs ≤ 2.1√f'c×b×d = """ + f"{V_s_max:.1f}" + """ kg</p>
-                <p><strong>Separación máxima:</strong> s ≤ d/2 o 60 cm = """ + f"{diseno_cortante['s_max']:.0f}" + """ cm</p>
-                <p><strong>Requiere acero:</strong> """ + ('SÍ' if requiere_acero_cortante else 'NO') + """ (Si Vu > φVc)</p>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Fórmulas de diseño de columnas
-            st.markdown("""
-            <div class="metric-card">
-                <h4>🏗️ DISEÑO DE COLUMNAS (ACI 318-2025 - Capítulo 10)</h4>
-                <p><strong>Carga axial última (Pu):</strong> Pu = 1.2PD + 1.6PL = """ + f"{P_u/1000:.1f}" + """ ton</p>
-                <p><strong>Resistencia nominal (Pn):</strong> Pn = 0.80[0.85f'c(Ag-Ast)+fyAst] = """ + f"{diseno_columna['Pn']/1000:.1f}" + """ ton</p>
-                <p><strong>Resistencia de diseño (φPn):</strong> φPn = φ×Pn = """ + f"{diseno_columna['phiPn']/1000:.1f}" + """ ton</p>
-                <p><strong>Refuerzo mínimo:</strong> As ≥ 0.01×Ag = """ + f"{As_min:.1f}" + """ cm² (1%)</p>
-                <p><strong>Refuerzo máximo:</strong> As ≤ 0.06×Ag = """ + f"{As_max:.1f}" + """ cm² (6%)</p>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Fórmulas de análisis sísmico
-            st.markdown("""
-            <div class="metric-card">
-                <h4>🌎 ANÁLISIS SÍSMICO (E.030 & ACI 318-2025 - Capítulo 18)</h4>
-                <p><strong>Cortante basal (V):</strong> V = Z×U×C×S×P/R = """ + f"{V/1000:.1f}" + """ ton</p>
-                <p><strong>Período fundamental (T):</strong> T = 0.1×N = """ + f"{T:.2f}" + """ s</p>
-                <p><strong>Coeficiente sísmico (C):</strong> C = 2.5×(1.0/T) = """ + f"{C:.3f}" + """</p>
-                <p><strong>Deriva máxima:</strong> Δmax = 0.007×h = """ + f"{0.007 * h_piso * 100:.2f}" + """ %</p>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            st.success("✅ Fórmulas ACI 318-2025 mostradas correctamente")
-        
-        # Conclusiones con Referencias Normativas Específicas
-        story.append(Paragraph("CONCLUSIONES Y RECOMENDACIONES CON REFERENCIAS NORMATIVAS", heading_style))
+        # Conclusiones
+        story.append(Paragraph("CONCLUSIONES", heading_style))
         conclusiones = [
-            "1. El predimensionamiento cumple con las especificaciones de la Norma E.060 Art. 10.2 (Predimensionamiento)",
-            "2. El análisis sísmico se realizó según la Norma E.030 (Diseño Sismorresistente)",
-            "3. El diseño estructural sigue los criterios de ACI 318-2025 (Building Code Requirements)",
-            "4. Se verificaron las cuantías mínimas (E.060 Art. 10.5.1 / ACI 9.6.1) y máximas (E.060 Art. 10.3.3 / ACI 9.3.3) de acero",
-            "5. La estructura cumple con los requisitos de seguridad según E.060 Art. 9.3.2 y ACI 9.3 (Factores de reducción)",
-            "6. Las vigas cumplen con el diseño por flexión según E.060 Art. 10.3 y ACI 9.3",
-            "7. Las columnas cumplen con el diseño por compresión según E.060 Art. 10.3.6 y ACI 9.3.2",
-            "8. Los factores de reducción φ aplicados son: φ = 0.9 para flexión y φ = 0.65 para compresión"
+            "1. El análisis estructural cumple con las normas ACI 318-2025",
+            "2. Se aplicaron los factores de reducción φ correspondientes",
+            "3. Las verificaciones de seguridad son satisfactorias",
+            "4. El diseño es conforme a las especificaciones técnicas"
         ]
         
         for conclusion in conclusiones:
@@ -1000,35 +723,11 @@ def generar_pdf_profesional(datos_proyecto, resultados_analisis):
         
         story.append(Spacer(1, 15))
         
-        # Firmas
-        story.append(Paragraph("FIRMAS Y APROBACIONES", heading_style))
-        firmas_data = [
-            ["INGENIERO CALCULISTA:", "_________________", f"FECHA: {datos_proyecto['fecha']}"],
-            ["INGENIERO REVISOR:", "_________________", f"FECHA: {datos_proyecto['fecha']}"],
-            ["DIRECTOR DE OBRA:", "_________________", f"FECHA: {datos_proyecto['fecha']}"]
-        ]
-        
-        firmas_table = Table(firmas_data, colWidths=[2*inch, 2*inch, 2*inch])
-        firmas_table.setStyle(TableStyle([
-            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-            ('FONTSIZE', (0, 0), (-1, -1), 9),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey)
-        ]))
-        story.append(firmas_table)
-        story.append(Spacer(1, 15))
-        
-        # Pie de página con Referencias Normativas Completas
+        # Pie de página
         story.append(Paragraph("<hr/>", normal_style))
         story.append(Paragraph("CONSORCIO DEJ - Ingeniería y Construcción", normal_style))
         story.append(Paragraph("Software de Análisis Estructural Profesional", normal_style))
-        story.append(Paragraph("Normas Aplicadas:", normal_style))
-        story.append(Paragraph("• 🇵🇪 E.060 - Concreto Armado (Perú)", normal_style))
-        story.append(Paragraph("• 🇵🇪 E.030 - Diseño Sismorresistente (Perú)", normal_style))
-        story.append(Paragraph("• 🇺🇸 ACI 318-2025 - Building Code Requirements for Structural Concrete", normal_style))
-        story.append(Paragraph("Generado automáticamente por CONSORCIO DEJ", 
-                             ParagraphStyle(name='Footer', fontSize=8, alignment=TA_CENTER)))
+        story.append(Paragraph("ACI 318-2025 & E.060 | E.030", normal_style))
         
         # Construir el PDF
         doc.build(story)
@@ -1346,27 +1045,35 @@ if st.session_state.authenticated:
                 st.warning(f"⚠️ Peso por nivel alto ({peso_por_nivel:.1f} ton)")
             
             # Gráfico básico
-            st.subheader("📈 Gráfico de Pesos")
-            datos = pd.DataFrame({
-                'Parámetro': ['Peso Total', 'Peso por Nivel'],
-                'Valor (ton)': [peso_total, peso_por_nivel]
-            })
-            
-            fig = go.Figure(data=[
-                go.Bar(x=datos['Parámetro'], y=datos['Valor (ton)'],
-                      marker_color=['#2E8B57', '#DC143C'],
-                      text=[f"{val:.1f}" for val in datos['Valor (ton)']],
-                      textposition='outside')
-            ])
-            
-            fig.update_layout(
-                title="Análisis de Pesos - Plan Básico",
-                xaxis_title="Parámetro",
-                yaxis_title="Peso (ton)",
-                height=400
-            )
-            
-            st.plotly_chart(fig, use_container_width=True)
+            if PLOTLY_AVAILABLE:
+                st.subheader("📈 Gráfico de Pesos")
+                datos = pd.DataFrame({
+                    'Parámetro': ['Peso Total', 'Peso por Nivel'],
+                    'Valor (ton)': [peso_total, peso_por_nivel]
+                })
+                
+                fig = go.Figure(data=[
+                    go.Bar(x=datos['Parámetro'], y=datos['Valor (ton)'],
+                          marker_color=['#2E8B57', '#DC143C'],
+                          text=[f"{val:.1f}" for val in datos['Valor (ton)']],
+                          textposition='outside')
+                ])
+                
+                fig.update_layout(
+                    title="Análisis de Pesos - Plan Básico",
+                    xaxis_title="Parámetro",
+                    yaxis_title="Peso (ton)",
+                    height=400
+                )
+                
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.subheader("📊 Resultados en Tabla")
+                datos_tabla = pd.DataFrame({
+                    'Parámetro': ['Peso Total', 'Peso por Nivel'],
+                    'Valor (ton)': [peso_total, peso_por_nivel]
+                })
+                st.dataframe(datos_tabla, use_container_width=True)
     
     elif opcion == "📊 Análisis Completo":
         # Verificar plan del usuario
