@@ -7,10 +7,17 @@ import hashlib
 import io
 import base64
 import math
-import matplotlib.pyplot as plt
-from matplotlib.patches import Rectangle, Polygon
 import tempfile
 import os
+
+# Importaciones opcionales con manejo de errores
+try:
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import Rectangle, Polygon
+    MATPLOTLIB_AVAILABLE = True
+except ImportError:
+    MATPLOTLIB_AVAILABLE = False
+    st.warning("⚠️ Matplotlib no está instalado. Los gráficos básicos no estarán disponibles.")
 
 # Importar sistema de pagos simple
 try:
@@ -665,20 +672,24 @@ if opcion == "🏗️ Cálculo Básico":
             st.plotly_chart(fig, use_container_width=True)
         else:
             # Gráfico alternativo con matplotlib
-            fig, ax = plt.subplots(figsize=(10, 6))
-            bars = ax.bar(datos['Propiedad'], datos['Valor'], 
-                         color=['#2E8B57', '#DC143C', '#4169E1', '#FFD700'])
-            ax.set_title("Propiedades de los Materiales - Plan Gratuito")
-            ax.set_xlabel("Propiedad")
-            ax.set_ylabel("Valor")
-            
-            # Agregar valores en las barras
-            for bar in bars:
-                height = bar.get_height()
-                ax.text(bar.get_x() + bar.get_width()/2., height + 0.1,
-                       f'{height:.2f}', ha='center', va='bottom')
-            
-            st.pyplot(fig)
+            if MATPLOTLIB_AVAILABLE:
+                fig, ax = plt.subplots(figsize=(10, 6))
+                bars = ax.bar(datos['Propiedad'], datos['Valor'], 
+                             color=['#2E8B57', '#DC143C', '#4169E1', '#FFD700'])
+                ax.set_title("Propiedades de los Materiales - Plan Gratuito")
+                ax.set_xlabel("Propiedad")
+                ax.set_ylabel("Valor")
+                
+                # Agregar valores en las barras
+                for bar in bars:
+                    height = bar.get_height()
+                    ax.text(bar.get_x() + bar.get_width()/2., height + 0.1,
+                           f'{height:.2f}', ha='center', va='bottom')
+                
+                st.pyplot(fig)
+            else:
+                st.info("📊 Gráfico no disponible - Matplotlib no está instalado")
+                st.write("Para ver gráficos, instale matplotlib: `pip install matplotlib`")
 
 elif opcion == "📊 Análisis Completo":
     # Verificar acceso basado en plan del usuario
@@ -842,22 +853,26 @@ elif opcion == "📊 Análisis Completo":
             else:
                 # Gráfico alternativo con matplotlib
                 st.subheader("📈 Gráfico de Resultados")
-                fig, ax = plt.subplots(figsize=(10, 6))
-                propiedades = ['Peso Total', 'Ec', 'Es', 'Espesor Losa']
-                valores = [peso_total, props_concreto['Ec']/1000, props_acero['Es']/1000000, predim['h_losa']*100]
-                colors = ['#2E8B57', '#4169E1', '#DC143C', '#FFD700']
-                
-                bars = ax.bar(propiedades, valores, color=colors)
-                ax.set_title("Resultados del Análisis Completo - Plan Premium")
-                ax.set_ylabel("Valor")
-                
-                # Agregar valores en las barras
-                for bar in bars:
-                    height = bar.get_height()
-                    ax.text(bar.get_x() + bar.get_width()/2., height + 0.1,
-                           f'{height:.1f}', ha='center', va='bottom')
-                
-                st.pyplot(fig)
+                if MATPLOTLIB_AVAILABLE:
+                    fig, ax = plt.subplots(figsize=(10, 6))
+                    propiedades = ['Peso Total', 'Ec', 'Es', 'Espesor Losa']
+                    valores = [peso_total, props_concreto['Ec']/1000, props_acero['Es']/1000000, predim['h_losa']*100]
+                    colors = ['#2E8B57', '#4169E1', '#DC143C', '#FFD700']
+                    
+                    bars = ax.bar(propiedades, valores, color=colors)
+                    ax.set_title("Resultados del Análisis Completo - Plan Premium")
+                    ax.set_ylabel("Valor")
+                    
+                    # Agregar valores en las barras
+                    for bar in bars:
+                        height = bar.get_height()
+                        ax.text(bar.get_x() + bar.get_width()/2., height + 0.1,
+                               f'{height:.1f}', ha='center', va='bottom')
+                    
+                    st.pyplot(fig)
+                else:
+                    st.info("📊 Gráfico no disponible - Matplotlib no está instalado")
+                    st.write("Para ver gráficos, instale matplotlib: `pip install matplotlib`")
 
 elif opcion == "📄 Generar Reporte":
     st.title("📄 Generar Reporte Técnico")
@@ -1351,22 +1366,26 @@ elif opcion == "📈 Gráficos":
                     st.plotly_chart(fig1, use_container_width=True)
                 else:
                     # Gráfico alternativo con matplotlib
-                    fig1, ax1 = plt.subplots(figsize=(8, 6))
-                    propiedades = ['Ec', 'Es', 'fr', 'β1']
-                    valores = [resultados.get('Ec', 0)/1000, resultados.get('Es', 0)/1000000, 
-                              resultados.get('fr', 0), resultados.get('beta1', 0)]
-                    colors = ['#4169E1', '#DC143C', '#32CD32', '#FFD700']
-                    
-                    bars = ax1.bar(propiedades, valores, color=colors)
-                    ax1.set_title("Propiedades de los Materiales - Plan Premium")
-                    ax1.set_ylabel("Valor")
-                    
-                    for bar in bars:
-                        height = bar.get_height()
-                        ax1.text(bar.get_x() + bar.get_width()/2., height + 0.1,
-                               f'{height:.2f}', ha='center', va='bottom')
-                    
-                    st.pyplot(fig1)
+                    if MATPLOTLIB_AVAILABLE:
+                        fig1, ax1 = plt.subplots(figsize=(8, 6))
+                        propiedades = ['Ec', 'Es', 'fr', 'β1']
+                        valores = [resultados.get('Ec', 0)/1000, resultados.get('Es', 0)/1000000, 
+                                  resultados.get('fr', 0), resultados.get('beta1', 0)]
+                        colors = ['#4169E1', '#DC143C', '#32CD32', '#FFD700']
+                        
+                        bars = ax1.bar(propiedades, valores, color=colors)
+                        ax1.set_title("Propiedades de los Materiales - Plan Premium")
+                        ax1.set_ylabel("Valor")
+                        
+                        for bar in bars:
+                            height = bar.get_height()
+                            ax1.text(bar.get_x() + bar.get_width()/2., height + 0.1,
+                                   f'{height:.2f}', ha='center', va='bottom')
+                        
+                        st.pyplot(fig1)
+                    else:
+                        st.info("📊 Gráfico no disponible - Matplotlib no está instalado")
+                        st.write("Para ver gráficos, instale matplotlib: `pip install matplotlib`")
             
             with col2:
                 # Gráfico de dimensiones
@@ -1390,15 +1409,19 @@ elif opcion == "📈 Gráficos":
                     st.plotly_chart(fig2, use_container_width=True)
                 else:
                     # Gráfico alternativo con matplotlib
-                    fig2, ax2 = plt.subplots(figsize=(8, 8))
-                    dimensiones = ['Peso Total', 'Espesor Losa', 'Ancho Viga', 'Alto Viga']
-                    valores = [resultados.get('peso_total', 0), resultados.get('h_losa', 0)*100, 
-                              resultados.get('b_viga', 0), resultados.get('d_viga', 0)]
-                    colors = ['#2E8B57', '#FF6B6B', '#4ECDC4', '#FFD93D']
-                    
-                    ax2.pie(valores, labels=dimensiones, autopct='%1.1f%%', colors=colors)
-                    ax2.set_title("Distribución de Dimensiones - Plan Premium")
-                    st.pyplot(fig2)
+                    if MATPLOTLIB_AVAILABLE:
+                        fig2, ax2 = plt.subplots(figsize=(8, 8))
+                        dimensiones = ['Peso Total', 'Espesor Losa', 'Ancho Viga', 'Alto Viga']
+                        valores = [resultados.get('peso_total', 0), resultados.get('h_losa', 0)*100, 
+                                  resultados.get('b_viga', 0), resultados.get('d_viga', 0)]
+                        colors = ['#2E8B57', '#FF6B6B', '#4ECDC4', '#FFD93D']
+                        
+                        ax2.pie(valores, labels=dimensiones, autopct='%1.1f%%', colors=colors)
+                        ax2.set_title("Distribución de Dimensiones - Plan Premium")
+                        st.pyplot(fig2)
+                    else:
+                        st.info("📊 Gráfico no disponible - Matplotlib no está instalado")
+                        st.write("Para ver gráficos, instale matplotlib: `pip install matplotlib`")
         else:
             st.warning("⚠️ No hay resultados disponibles. Realiza primero el análisis completo.")
 
