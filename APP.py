@@ -14,6 +14,14 @@ from reportlab.lib.units import inch
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 
+# Importar sistema de pagos simple
+try:
+    from simple_payment_system import payment_system
+    PAYMENT_SYSTEM_AVAILABLE = True
+except ImportError:
+    PAYMENT_SYSTEM_AVAILABLE = False
+    st.warning("⚠️ Sistema de pagos no disponible. Usando modo demo.")
+
 # Configuración de la página
 st.set_page_config(
     page_title="CONSORCIO DEJ - Análisis Estructural Profesional",
@@ -110,9 +118,72 @@ def get_user_plan(username):
     }
     return plan_mapping.get(username, "basico")
 
+def show_payment_form(plan):
+    """Mostrar formulario de pago"""
+    st.subheader(f"💳 Pago - Plan {plan.title()}")
+    
+    # Verificar si hay usuario logueado
+    if 'username' not in st.session_state:
+        st.warning("⚠️ Debes iniciar sesión o registrarte primero")
+        st.info("📝 Ve a la pestaña 'Registrarse' para crear una cuenta")
+        return
+    
+    payment_method = st.selectbox(
+        "Método de pago",
+        ["yape", "plin", "paypal", "transferencia", "efectivo"],
+        format_func=lambda x: {
+            "yape": "📱 Yape (Más Rápido)",
+            "plin": "📱 PLIN",
+            "paypal": "💳 PayPal",
+            "transferencia": "🏦 Transferencia Bancaria", 
+            "efectivo": "💵 Pago en Efectivo"
+        }[x]
+    )
+    
+    if st.button("Procesar Pago", type="primary"):
+        if PAYMENT_SYSTEM_AVAILABLE:
+            try:
+                # Usar email del usuario actual
+                user_email = st.session_state.get('user_email', 'demo@consorciodej.com')
+                result = payment_system.upgrade_plan(user_email, plan, payment_method)
+                
+                if result["success"]:
+                    st.success("✅ Pago procesado correctamente")
+                    st.info("📋 Instrucciones de pago:")
+                    st.text(result["instructions"])
+                    
+                    # Mostrar información adicional
+                    st.info("📱 Envía el comprobante de pago a WhatsApp: +51 999 888 777")
+                    
+                    # Verificar si fue confirmado automáticamente
+                    if result.get("auto_confirmed"):
+                        st.success("🎉 ¡Plan activado inmediatamente!")
+                        st.info("✅ Pago confirmado automáticamente")
+                        
+                        # Actualizar plan en session state
+                        st.session_state['plan'] = plan
+                        
+                        # Botón para continuar con acceso completo
+                        if st.button("🚀 Continuar con Acceso Completo", key="continue_full_access"):
+                            st.rerun()
+                    else:
+                        st.info("⏰ Activación en 2 horas máximo")
+                        st.info("🔄 Recarga la página después de 2 horas")
+                else:
+                    st.error(f"❌ Error: {result['message']}")
+            except Exception as e:
+                st.error(f"❌ Error en el sistema de pagos: {str(e)}")
+                st.info("🔄 Intenta nuevamente o contacta soporte")
+        else:
+            st.error("❌ Sistema de pagos no disponible")
+            st.info("🔧 Contacta al administrador para activar el sistema")
+
 def show_pricing_page():
     """Mostrar página de precios y planes"""
     st.title("💰 Planes y Precios - CONSORCIO DEJ")
+    
+    # Verificar si es administrador
+    is_admin = st.session_state.get('username') == 'admin'
     
     col1, col2, col3 = st.columns(3)
     
@@ -127,9 +198,12 @@ def show_pricing_page():
         st.write("❌ Sin gráficos avanzados")
         
         if st.button("Seleccionar Básico", key="basic_plan"):
-            st.session_state['plan'] = "basico"
-            st.success("✅ Plan básico activado")
-            st.rerun()
+            if is_admin:
+                st.session_state['plan'] = "basico"
+                st.success("✅ Plan básico activado para administrador")
+                st.rerun()
+            else:
+                st.info("Ya tienes acceso al plan básico")
     
     with col2:
         st.subheader("⭐ Plan Premium")
@@ -142,9 +216,15 @@ def show_pricing_page():
         st.write("❌ Sin soporte empresarial")
         
         if st.button("Actualizar a Premium", key="premium_plan"):
-            st.session_state['plan'] = "premium"
-            st.success("✅ Plan Premium activado")
-            st.rerun()
+            if is_admin:
+                # Acceso directo para administrador
+                st.session_state['plan'] = "premium"
+                st.success("✅ Plan Premium activado para administrador")
+                st.rerun()
+            elif PAYMENT_SYSTEM_AVAILABLE:
+                show_payment_form("premium")
+            else:
+                st.info("Sistema de pagos no disponible en modo demo")
     
     with col3:
         st.subheader("🏢 Plan Empresarial")
@@ -157,9 +237,40 @@ def show_pricing_page():
         st.write("✅ API de integración")
         
         if st.button("Actualizar a Empresarial", key="business_plan"):
-            st.session_state['plan'] = "empresarial"
-            st.success("✅ Plan Empresarial activado")
-            st.rerun()
+            if is_admin:
+                # Acceso directo para administrador
+                st.session_state['plan'] = "empresarial"
+                st.success("✅ Plan Empresarial activado para administrador")
+                st.rerun()
+            elif PAYMENT_SYSTEM_AVAILABLE:
+                show_payment_form("empresarial")
+            else:
+                st.info("Sistema de pagos no disponible en modo demo")
+    
+    # Panel especial para administrador
+    if is_admin:
+        st.markdown("---")
+        st.subheader("👨‍💼 Panel de Administrador")
+        st.info("Como administrador, puedes cambiar tu plan directamente sin pasar por el sistema de pagos.")
+        
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            if st.button("🆓 Activar Plan Básico", key="admin_basic"):
+                st.session_state['plan'] = "basico"
+                st.success("✅ Plan básico activado")
+                st.rerun()
+        
+        with col2:
+            if st.button("⭐ Activar Plan Premium", key="admin_premium"):
+                st.session_state['plan'] = "premium"
+                st.success("✅ Plan premium activado")
+                st.rerun()
+        
+        with col3:
+            if st.button("🏢 Activar Plan Empresarial", key="admin_enterprise"):
+                st.session_state['plan'] = "empresarial"
+                st.success("✅ Plan empresarial activado")
+                st.rerun()
 
 # Función para generar PDF profesional optimizada para Streamlit Cloud
 def generar_pdf_profesional(datos_proyecto, resultados_analisis):
@@ -462,56 +573,113 @@ if not st.session_state.authenticated:
             """, unsafe_allow_html=True)
             
             with st.form("login_form"):
-                username = st.text_input("👤 Usuario", placeholder="Ingresa tu usuario")
+                username = st.text_input("👤 Email", placeholder="tuemail@gmail.com")
                 password = st.text_input("🔒 Contraseña", type="password", placeholder="Ingresa tu contraseña")
                 submitted = st.form_submit_button("🚀 Iniciar Sesión", type="primary")
                 
                 if submitted:
-                    if check_credentials(username, password):
+                    # Verificar credenciales especiales primero
+                    if username == "admin" and password == "admin123":
                         st.session_state.authenticated = True
-                        st.session_state.username = username
-                        st.session_state.plan = get_user_plan(username)
-                        st.success("✅ ¡Acceso exitoso! Bienvenido al sistema.")
+                        st.session_state.username = "admin"
+                        st.session_state.plan = "empresarial"
+                        st.success("✅ ¡Bienvenido Administrador!")
                         st.rerun()
+                    elif username == "demo" and password == "demo123":
+                        st.session_state.authenticated = True
+                        st.session_state.username = "demo"
+                        st.session_state.plan = "basico"
+                        st.success("✅ ¡Bienvenido al modo demo!")
+                        st.rerun()
+                    elif PAYMENT_SYSTEM_AVAILABLE:
+                        # Sistema real de pagos
+                        result = payment_system.login_user(username, password)
+                        if result["success"]:
+                            st.session_state.authenticated = True
+                            st.session_state.username = result["user"]["name"]
+                            st.session_state.plan = result["user"]["plan"]
+                            st.success(f"✅ ¡Bienvenido, {result['user']['name']}!")
+                            st.rerun()
+                        else:
+                            st.error(f"❌ {result['message']}")
                     else:
-                        st.error("❌ Usuario o contraseña incorrectos")
+                        st.error("❌ Sistema de pagos no disponible. Usa credenciales de demo.")
             
             with st.expander("ℹ️ Credenciales de Prueba"):
                 st.write("**Usuarios disponibles:**")
-                st.write("• Usuario: `admin` | Contraseña: `admin123` (Empresarial)")
-                st.write("• Usuario: `consorcio` | Contraseña: `dej2024` (Empresarial)")
-                st.write("• Usuario: `ingeniero` | Contraseña: `structural` (Premium)")
-                st.write("• Usuario: `premium` | Contraseña: `premium` (Premium)")
-                st.write("• Usuario: `empresarial` | Contraseña: `empresarial` (Empresarial)")
-                st.write("• Usuario: `demo` | Contraseña: `demo123` (Básico)")
+                st.write("• Email: `admin` | Contraseña: `admin123` (Empresarial)")
+                st.write("• Email: `demo` | Contraseña: `demo123` (Básico)")
+                if PAYMENT_SYSTEM_AVAILABLE:
+                    st.write("• Registra tu cuenta para acceder al sistema completo")
     
     with tab2:
         st.subheader("📝 Crear Cuenta")
         with st.form("register_form"):
-            new_username = st.text_input("Usuario", placeholder="Tu nombre de usuario")
+            new_name = st.text_input("Nombre completo", placeholder="Tu nombre completo")
             new_email = st.text_input("Email", placeholder="tuemail@gmail.com")
             new_password = st.text_input("Contraseña", type="password", placeholder="Mínimo 6 caracteres")
             confirm_password = st.text_input("Confirmar Contraseña", type="password")
             submitted = st.form_submit_button("📝 Registrarse", type="primary")
             
             if submitted:
-                if not new_username or not new_email or not new_password:
+                if not new_name or not new_email or not new_password:
                     st.error("❌ Todos los campos son obligatorios")
                 elif new_password != confirm_password:
                     st.error("❌ Las contraseñas no coinciden")
                 elif len(new_password) < 6:
                     st.error("❌ La contraseña debe tener al menos 6 caracteres")
                 else:
-                    st.success("✅ Registro simulado exitoso")
-                    st.info("🔑 Usa las credenciales de prueba para acceder")
+                    if PAYMENT_SYSTEM_AVAILABLE:
+                        result = payment_system.register_user(new_email, new_password, new_name)
+                        if result["success"]:
+                            st.success("✅ " + result["message"])
+                            st.info("🔐 Ahora puedes iniciar sesión y actualizar tu plan")
+                            
+                            # Auto-login después del registro
+                            login_result = payment_system.login_user(new_email, new_password)
+                            if login_result["success"]:
+                                st.session_state.authenticated = True
+                                st.session_state.username = login_result["user"]["name"]
+                                st.session_state.plan = login_result["user"]["plan"]
+                                st.success(f"🎉 ¡Bienvenido, {login_result['user']['name']}!")
+                                st.info("💰 Ve a 'Planes y Precios' para actualizar tu plan")
+                                st.rerun()
+                        else:
+                            st.error("❌ " + result["message"])
+                    else:
+                        st.success("✅ Registro simulado exitoso")
+                        st.info("🔑 Usa las credenciales de demo para acceder")
     
     with tab3:
         show_pricing_page()
     
     st.stop()
 
+# Función para actualizar plan del usuario
+def update_user_plan():
+    """Actualizar plan del usuario desde el sistema de pagos"""
+    if PAYMENT_SYSTEM_AVAILABLE and 'user_email' in st.session_state:
+        try:
+            user_email = st.session_state['user_email']
+            if user_email and user_email not in ['admin', 'demo']:
+                real_plan = payment_system.get_user_plan(user_email)
+                current_plan = real_plan.get('plan', 'basico')
+                
+                # Actualizar session state si el plan cambió
+                if st.session_state.get('plan') != current_plan:
+                    st.session_state['plan'] = current_plan
+                    return True
+        except Exception as e:
+            pass
+    return False
+
 # Aplicación principal
 if st.session_state.authenticated:
+    # Actualizar plan del usuario automáticamente
+    plan_updated = update_user_plan()
+    if plan_updated:
+        st.success("🎉 ¡Tu plan ha sido actualizado!")
+        st.rerun()
     # Header profesional
     st.markdown("""
     <div class="main-header">
@@ -584,36 +752,56 @@ if st.session_state.authenticated:
         # Materiales
         st.subheader("🏗️ Materiales")
         f_c = st.number_input("Resistencia del concreto f'c (kg/cm²)", 
-                             min_value=175, max_value=700, value=210, step=10)
+                             min_value=175, max_value=700, value=210, step=10, key="f_c_input")
         f_y = st.number_input("Esfuerzo de fluencia del acero fy (kg/cm²)", 
-                             min_value=2800, max_value=6000, value=4200, step=100)
+                             min_value=2800, max_value=6000, value=4200, step=100, key="f_y_input")
+        
+        # Guardar en session state
+        st.session_state['f_c'] = f_c
+        st.session_state['f_y'] = f_y
         
         # Geometría
         st.subheader("📐 Geometría")
         L_viga = st.number_input("Luz libre de vigas (m)", 
-                                min_value=3.0, max_value=15.0, value=6.0, step=0.5)
+                                min_value=3.0, max_value=15.0, value=6.0, step=0.5, key="L_viga_input")
         h_piso = st.number_input("Altura de piso (m)", 
-                                min_value=2.5, max_value=5.0, value=3.0, step=0.1)
+                                min_value=2.5, max_value=5.0, value=3.0, step=0.1, key="h_piso_input")
         num_pisos = st.number_input("Número de pisos", 
-                                   min_value=1, max_value=100, value=15, step=1)
+                                   min_value=1, max_value=100, value=15, step=1, key="num_pisos_input")
         num_vanos = st.number_input("Número de vanos en dirección X", 
-                                   min_value=1, max_value=20, value=3, step=1)
+                                   min_value=1, max_value=20, value=3, step=1, key="num_vanos_input")
+        
+        # Guardar en session state
+        st.session_state['L_viga'] = L_viga
+        st.session_state['h_piso'] = h_piso
+        st.session_state['num_pisos'] = num_pisos
+        st.session_state['num_vanos'] = num_vanos
         
         # Cargas
         st.subheader("⚖️ Cargas")
         CM = st.number_input("Carga Muerta (kg/m²)", 
-                            min_value=100, max_value=2000, value=150, step=50)
+                            min_value=100, max_value=2000, value=150, step=50, key="CM_input")
         CV = st.number_input("Carga Viva (kg/m²)", 
-                            min_value=100, max_value=1000, value=200, step=50)
+                            min_value=100, max_value=1000, value=200, step=50, key="CV_input")
+        
+        # Guardar en session state
+        st.session_state['CM'] = CM
+        st.session_state['CV'] = CV
         
         # Parámetros sísmicos
         st.subheader("🌎 Parámetros Sísmicos")
-        zona_sismica = st.selectbox("Zona Sísmica", ["Z1", "Z2", "Z3", "Z4"], index=2)
-        tipo_suelo = st.selectbox("Tipo de Suelo", ["S1", "S2", "S3", "S4"], index=1)
+        zona_sismica = st.selectbox("Zona Sísmica", ["Z1", "Z2", "Z3", "Z4"], index=2, key="zona_sismica_input")
+        tipo_suelo = st.selectbox("Tipo de Suelo", ["S1", "S2", "S3", "S4"], index=1, key="tipo_suelo_input")
         tipo_estructura = st.selectbox("Tipo de Sistema Estructural", 
-                                      ["Pórticos", "Muros Estructurales", "Dual"], index=0)
+                                      ["Pórticos", "Muros Estructurales", "Dual"], index=0, key="tipo_estructura_input")
         factor_importancia = st.number_input("Factor de Importancia (U)", 
-                                           min_value=1.0, max_value=1.5, value=1.0, step=0.1)
+                                           min_value=1.0, max_value=1.5, value=1.0, step=0.1, key="factor_importancia_input")
+        
+        # Guardar en session state
+        st.session_state['zona_sismica'] = zona_sismica
+        st.session_state['tipo_suelo'] = tipo_suelo
+        st.session_state['tipo_estructura'] = tipo_estructura
+        st.session_state['factor_importancia'] = factor_importancia
     
     # Área principal - Solo mostrar si se presiona el botón
     if st.session_state.get('calcular_todo', False):
@@ -635,6 +823,20 @@ if st.session_state.authenticated:
         
         st.success("✅ ¡Iniciando análisis estructural completo!")
         
+        # Obtener datos del sidebar desde session state
+        f_c = st.session_state.get('f_c', 210)
+        f_y = st.session_state.get('f_y', 4200)
+        L_viga = st.session_state.get('L_viga', 6.0)
+        h_piso = st.session_state.get('h_piso', 3.0)
+        num_pisos = st.session_state.get('num_pisos', 15)
+        num_vanos = st.session_state.get('num_vanos', 3)
+        CM = st.session_state.get('CM', 150)
+        CV = st.session_state.get('CV', 200)
+        zona_sismica = st.session_state.get('zona_sismica', 'Z3')
+        tipo_suelo = st.session_state.get('tipo_suelo', 'S2')
+        tipo_estructura = st.session_state.get('tipo_estructura', 'Pórticos')
+        factor_importancia = st.session_state.get('factor_importancia', 1.0)
+        
         # Mostrar datos de entrada
         st.markdown("""
         <div class="section-header">
@@ -645,34 +847,33 @@ if st.session_state.authenticated:
         col1, col2, col3 = st.columns(3)
         
         with col1:
-            st.markdown("""
+            st.markdown(f"""
             <div class="metric-card">
                 <h4>🏗️ Materiales</h4>
-                <p><strong>f'c:</strong> """ + str(f_c) + """ kg/cm²</p>
-                <p><strong>fy:</strong> """ + str(f_y) + """ kg/cm²</p>
+                <p><strong>f'c:</strong> {f_c} kg/cm²</p>
+                <p><strong>fy:</strong> {f_y} kg/cm²</p>
             </div>
             """, unsafe_allow_html=True)
         
         with col2:
-            st.markdown("""
+            st.markdown(f"""
             <div class="metric-card">
                 <h4>📐 Geometría</h4>
-                <p><strong>Luz:</strong> """ + str(L_viga) + """ m</p>
-                <p><strong>Altura piso:</strong> """ + str(h_piso) + """ m</p>
-                <p><strong>Pisos:</strong> """ + str(num_pisos) + """</p>
+                <p><strong>Luz:</strong> {L_viga} m</p>
+                <p><strong>Altura piso:</strong> {h_piso} m</p>
+                <p><strong>Pisos:</strong> {num_pisos}</p>
             </div>
             """, unsafe_allow_html=True)
         
         with col3:
-            st.markdown("""
+            st.markdown(f"""
             <div class="metric-card">
                 <h4>🌎 Sísmicos</h4>
-                <p><strong>Zona:</strong> """ + zona_sismica + """</p>
-                <p><strong>Suelo:</strong> """ + tipo_suelo + """</p>
-                <p><strong>Sistema:</strong> """ + tipo_estructura + """</p>
+                <p><strong>Zona:</strong> {zona_sismica}</p>
+                <p><strong>Suelo:</strong> {tipo_suelo}</p>
+                <p><strong>Sistema:</strong> {tipo_estructura}</p>
             </div>
             """, unsafe_allow_html=True)
-        st.success("✅ ¡Iniciando análisis estructural completo!")
         
         # Calcular módulo de elasticidad
         E = 15000 * sqrt(f_c)
