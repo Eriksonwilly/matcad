@@ -83,7 +83,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Sistema de autenticación
+# Sistema de autenticación y planes
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
@@ -92,9 +92,74 @@ def check_credentials(username, password):
         "admin": hash_password("admin123"),
         "consorcio": hash_password("dej2024"),
         "ingeniero": hash_password("structural"),
-        "demo": hash_password("demo123")
+        "demo": hash_password("demo123"),
+        "premium": hash_password("premium"),
+        "empresarial": hash_password("empresarial")
     }
     return username in valid_users and valid_users[username] == hash_password(password)
+
+def get_user_plan(username):
+    """Obtener el plan del usuario"""
+    plan_mapping = {
+        "admin": "empresarial",
+        "consorcio": "empresarial", 
+        "ingeniero": "premium",
+        "demo": "basico",
+        "premium": "premium",
+        "empresarial": "empresarial"
+    }
+    return plan_mapping.get(username, "basico")
+
+def show_pricing_page():
+    """Mostrar página de precios y planes"""
+    st.title("💰 Planes y Precios - CONSORCIO DEJ")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.subheader("🆓 Plan Básico")
+        st.write("**$0/mes**")
+        st.write("✅ Cálculos básicos")
+        st.write("✅ Análisis simple")
+        st.write("✅ Reportes básicos")
+        st.write("❌ Sin análisis completo")
+        st.write("❌ Sin diseño del fuste")
+        st.write("❌ Sin gráficos avanzados")
+        
+        if st.button("Seleccionar Básico", key="basic_plan"):
+            st.session_state['plan'] = "basico"
+            st.success("✅ Plan básico activado")
+            st.rerun()
+    
+    with col2:
+        st.subheader("⭐ Plan Premium")
+        st.write("**$29.99/mes**")
+        st.write("✅ Todo del plan básico")
+        st.write("✅ Análisis completo")
+        st.write("✅ Diseño del fuste")
+        st.write("✅ Gráficos avanzados")
+        st.write("✅ Reportes PDF")
+        st.write("❌ Sin soporte empresarial")
+        
+        if st.button("Actualizar a Premium", key="premium_plan"):
+            st.session_state['plan'] = "premium"
+            st.success("✅ Plan Premium activado")
+            st.rerun()
+    
+    with col3:
+        st.subheader("🏢 Plan Empresarial")
+        st.write("**$99.99/mes**")
+        st.write("✅ Todo del plan premium")
+        st.write("✅ Soporte prioritario")
+        st.write("✅ Múltiples proyectos")
+        st.write("✅ Reportes personalizados")
+        st.write("✅ Capacitación incluida")
+        st.write("✅ API de integración")
+        
+        if st.button("Actualizar a Empresarial", key="business_plan"):
+            st.session_state['plan'] = "empresarial"
+            st.success("✅ Plan Empresarial activado")
+            st.rerun()
 
 # Función para generar PDF profesional optimizada para Streamlit Cloud
 def generar_pdf_profesional(datos_proyecto, resultados_analisis):
@@ -371,7 +436,7 @@ def generar_pdf_profesional(datos_proyecto, resultados_analisis):
 if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
 
-# Página de login
+# Página de login con pestañas
 if not st.session_state.authenticated:
     st.markdown("""
     <div class="main-header">
@@ -382,36 +447,66 @@ if not st.session_state.authenticated:
     </div>
     """, unsafe_allow_html=True)
     
-    col1, col2, col3 = st.columns([1, 2, 1])
+    # Pestañas para login y planes
+    tab1, tab2, tab3 = st.tabs(["🔐 Iniciar Sesión", "📝 Registrarse", "💰 Planes y Precios"])
     
-    with col2:
-        st.markdown("""
-        <div style="background-color: #f8f9fa; padding: 30px; border-radius: 15px; border: 2px solid #dee2e6;">
-            <h2 style="text-align: center; color: #1e3c72;">🔐 Acceso al Sistema</h2>
-            <p style="text-align: center; color: #666;">Ingresa tus credenciales para continuar</p>
-        </div>
-        """, unsafe_allow_html=True)
+    with tab1:
+        col1, col2, col3 = st.columns([1, 2, 1])
         
-        with st.form("login_form"):
-            username = st.text_input("👤 Usuario", placeholder="Ingresa tu usuario")
-            password = st.text_input("🔒 Contraseña", type="password", placeholder="Ingresa tu contraseña")
-            submitted = st.form_submit_button("🚀 Iniciar Sesión", type="primary")
+        with col2:
+            st.markdown("""
+            <div style="background-color: #f8f9fa; padding: 30px; border-radius: 15px; border: 2px solid #dee2e6;">
+                <h2 style="text-align: center; color: #1e3c72;">🔐 Acceso al Sistema</h2>
+                <p style="text-align: center; color: #666;">Ingresa tus credenciales para continuar</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            with st.form("login_form"):
+                username = st.text_input("👤 Usuario", placeholder="Ingresa tu usuario")
+                password = st.text_input("🔒 Contraseña", type="password", placeholder="Ingresa tu contraseña")
+                submitted = st.form_submit_button("🚀 Iniciar Sesión", type="primary")
+                
+                if submitted:
+                    if check_credentials(username, password):
+                        st.session_state.authenticated = True
+                        st.session_state.username = username
+                        st.session_state.plan = get_user_plan(username)
+                        st.success("✅ ¡Acceso exitoso! Bienvenido al sistema.")
+                        st.rerun()
+                    else:
+                        st.error("❌ Usuario o contraseña incorrectos")
+            
+            with st.expander("ℹ️ Credenciales de Prueba"):
+                st.write("**Usuarios disponibles:**")
+                st.write("• Usuario: `admin` | Contraseña: `admin123` (Empresarial)")
+                st.write("• Usuario: `consorcio` | Contraseña: `dej2024` (Empresarial)")
+                st.write("• Usuario: `ingeniero` | Contraseña: `structural` (Premium)")
+                st.write("• Usuario: `premium` | Contraseña: `premium` (Premium)")
+                st.write("• Usuario: `empresarial` | Contraseña: `empresarial` (Empresarial)")
+                st.write("• Usuario: `demo` | Contraseña: `demo123` (Básico)")
+    
+    with tab2:
+        st.subheader("📝 Crear Cuenta")
+        with st.form("register_form"):
+            new_username = st.text_input("Usuario", placeholder="Tu nombre de usuario")
+            new_email = st.text_input("Email", placeholder="tuemail@gmail.com")
+            new_password = st.text_input("Contraseña", type="password", placeholder="Mínimo 6 caracteres")
+            confirm_password = st.text_input("Confirmar Contraseña", type="password")
+            submitted = st.form_submit_button("📝 Registrarse", type="primary")
             
             if submitted:
-                if check_credentials(username, password):
-                    st.session_state.authenticated = True
-                    st.session_state.username = username
-                    st.success("✅ ¡Acceso exitoso! Bienvenido al sistema.")
-                    st.rerun()
+                if not new_username or not new_email or not new_password:
+                    st.error("❌ Todos los campos son obligatorios")
+                elif new_password != confirm_password:
+                    st.error("❌ Las contraseñas no coinciden")
+                elif len(new_password) < 6:
+                    st.error("❌ La contraseña debe tener al menos 6 caracteres")
                 else:
-                    st.error("❌ Usuario o contraseña incorrectos")
-        
-        with st.expander("ℹ️ Credenciales de Prueba"):
-            st.write("**Usuarios disponibles:**")
-            st.write("• Usuario: `admin` | Contraseña: `admin123`")
-            st.write("• Usuario: `consorcio` | Contraseña: `dej2024`")
-            st.write("• Usuario: `ingeniero` | Contraseña: `structural`")
-            st.write("• Usuario: `demo` | Contraseña: `demo123`")
+                    st.success("✅ Registro simulado exitoso")
+                    st.info("🔑 Usa las credenciales de prueba para acceder")
+    
+    with tab3:
+        show_pricing_page()
     
     st.stop()
 
@@ -427,10 +522,40 @@ if st.session_state.authenticated:
     </div>
     """, unsafe_allow_html=True)
     
-    # Sidebar con datos de entrada
+        # Sidebar con datos de entrada
     with st.sidebar:
         st.header("👤 Usuario Actual")
         st.success(f"**{st.session_state.username.upper()}**")
+        
+        # Mostrar plan actual
+        plan = st.session_state.get('plan', 'basico')
+        if plan == "basico":
+            st.info("🆓 Plan Básico")
+        elif plan == "premium":
+            st.success("⭐ Plan Premium")
+        else:
+            st.success("🏢 Plan Empresarial")
+        
+        # Panel de administrador para cambiar plan
+        if st.session_state.username in ['admin', 'consorcio']:
+            st.markdown("---")
+            st.subheader("👨‍💼 Panel de Administrador")
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                if st.button("🆓 Básico", key="admin_basic"):
+                    st.session_state['plan'] = "basico"
+                    st.success("✅ Plan básico activado")
+                    st.rerun()
+            with col2:
+                if st.button("⭐ Premium", key="admin_premium"):
+                    st.session_state['plan'] = "premium"
+                    st.success("✅ Plan premium activado")
+                    st.rerun()
+            with col3:
+                if st.button("🏢 Empresarial", key="admin_enterprise"):
+                    st.session_state['plan'] = "empresarial"
+                    st.success("✅ Plan empresarial activado")
+                    st.rerun()
         
         if st.button("🚪 Cerrar Sesión"):
             st.session_state.authenticated = False
@@ -492,6 +617,22 @@ if st.session_state.authenticated:
     
     # Área principal - Solo mostrar si se presiona el botón
     if st.session_state.get('calcular_todo', False):
+        # Verificar plan del usuario
+        plan = st.session_state.get('plan', 'basico')
+        if plan == "basico":
+            st.warning("⚠️ El análisis completo requiere plan premium o empresarial")
+            st.info("Plan básico incluye: Cálculos básicos, resultados simples")
+            st.info("Plan premium incluye: Análisis completo, reportes detallados, gráficos avanzados")
+            
+            # Mostrar botón para actualizar plan
+            col1, col2, col3 = st.columns([1, 2, 1])
+            with col2:
+                if st.button("⭐ Actualizar a Premium", type="primary"):
+                    st.session_state['plan'] = "premium"
+                    st.success("✅ Plan premium activado")
+                    st.rerun()
+            st.stop()
+        
         st.success("✅ ¡Iniciando análisis estructural completo!")
         
         # Mostrar datos de entrada
@@ -985,6 +1126,13 @@ if st.session_state.authenticated:
         if st.button("📄 GENERAR REPORTE PDF PROFESIONAL", type="primary", use_container_width=True):
             with st.spinner('Generando reporte PDF...'):
                 try:
+                    # Verificar plan del usuario
+                    plan = st.session_state.get('plan', 'basico')
+                    if plan == "basico":
+                        st.warning("⚠️ Esta función requiere plan premium o empresarial")
+                        st.info("Actualiza tu plan para acceder a reportes PDF profesionales")
+                        st.stop()
+                    
                     # Preparar datos para el reporte
                     datos_proyecto = {
                         'fecha': datetime.now().strftime('%d/%m/%Y %H:%M'),
@@ -1061,16 +1209,35 @@ if st.session_state.authenticated:
     
     else:
         # Mostrar mensaje cuando no se ha presionado el botón
-        st.markdown("""
-        <div style="text-align: center; padding: 50px; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-radius: 15px; margin: 50px 0;">
-            <h2 style="color: #1e3c72;">🏗️ CONSORCIO DEJ</h2>
-            <p style="font-size: 18px; color: #666;">Software de Análisis Estructural Profesional</p>
-            <p style="font-size: 16px; color: #888;">Ingresa los datos en el sidebar y presiona el botón "EJECUTAR ANÁLISIS COMPLETO" para comenzar</p>
-            <div style="margin-top: 30px;">
-                <span style="background: #28a745; color: white; padding: 10px 20px; border-radius: 8px; font-weight: bold;">⚡ LISTO PARA CALCULAR</span>
+        plan = st.session_state.get('plan', 'basico')
+        
+        if plan == "basico":
+            st.markdown("""
+            <div style="text-align: center; padding: 50px; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-radius: 15px; margin: 50px 0;">
+                <h2 style="color: #1e3c72;">🏗️ CONSORCIO DEJ</h2>
+                <p style="font-size: 18px; color: #666;">Software de Análisis Estructural Profesional</p>
+                <p style="font-size: 16px; color: #888;">🆓 Plan Básico - Funciones limitadas</p>
+                <p style="font-size: 14px; color: #999;">Ingresa los datos en el sidebar y presiona el botón "EJECUTAR ANÁLISIS COMPLETO" para comenzar</p>
+                <div style="margin-top: 30px;">
+                    <span style="background: #28a745; color: white; padding: 10px 20px; border-radius: 8px; font-weight: bold;">⚡ LISTO PARA CALCULAR</span>
+                </div>
+                <div style="margin-top: 20px;">
+                    <span style="background: #ffc107; color: #333; padding: 8px 16px; border-radius: 6px; font-size: 14px;">💡 Actualiza a Premium para análisis completo</span>
+                </div>
             </div>
-        </div>
-        """, unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown("""
+            <div style="text-align: center; padding: 50px; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-radius: 15px; margin: 50px 0;">
+                <h2 style="color: #1e3c72;">🏗️ CONSORCIO DEJ</h2>
+                <p style="font-size: 18px; color: #666;">Software de Análisis Estructural Profesional</p>
+                <p style="font-size: 16px; color: #888;">""" + ("⭐ Plan Premium" if plan == "premium" else "🏢 Plan Empresarial") + """ - Acceso completo</p>
+                <p style="font-size: 14px; color: #999;">Ingresa los datos en el sidebar y presiona el botón "EJECUTAR ANÁLISIS COMPLETO" para comenzar</p>
+                <div style="margin-top: 30px;">
+                    <span style="background: #28a745; color: white; padding: 10px 20px; border-radius: 8px; font-weight: bold;">⚡ LISTO PARA CALCULAR</span>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
     
     # Footer profesional
     st.markdown("---")
