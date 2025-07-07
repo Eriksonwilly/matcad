@@ -96,353 +96,276 @@ def check_credentials(username, password):
     }
     return username in valid_users and valid_users[username] == hash_password(password)
 
-# Función para generar PDF profesional
+# Función para generar PDF profesional optimizada para Streamlit Cloud
 def generar_pdf_profesional(datos_proyecto, resultados_analisis):
-    buffer = io.BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=A4, 
-                           rightMargin=72, leftMargin=72, 
-                           topMargin=72, bottomMargin=72)
-    story = []
-    
-    # Estilos mejorados
-    styles = getSampleStyleSheet()
-    title_style = ParagraphStyle(
-        'CustomTitle',
-        parent=styles['Heading1'],
-        fontSize=20,
-        spaceAfter=30,
-        alignment=TA_CENTER,
-        textColor=colors.darkblue,
-        fontName='Helvetica-Bold'
-    )
-    heading_style = ParagraphStyle(
-        'CustomHeading',
-        parent=styles['Heading2'],
-        fontSize=14,
-        spaceAfter=12,
-        textColor=colors.darkblue,
-        fontName='Helvetica-Bold',
-        borderWidth=1,
-        borderColor=colors.darkblue,
-        borderPadding=5,
-        backColor=colors.lightblue
-    )
-    subheading_style = ParagraphStyle(
-        'CustomSubHeading',
-        parent=styles['Heading3'],
-        fontSize=12,
-        spaceAfter=8,
-        textColor=colors.darkblue,
-        fontName='Helvetica-Bold'
-    )
-    normal_style = ParagraphStyle(
-        'CustomNormal',
-        parent=styles['Normal'],
-        fontSize=10,
-        spaceAfter=6,
-        fontName='Helvetica'
-    )
-    
-    # Header corporativo
-    story.append(Paragraph("CONSORCIO DEJ", title_style))
-    story.append(Paragraph("Ingeniería y Construcción", normal_style))
-    story.append(Paragraph("Software de Análisis Estructural Profesional", normal_style))
-    story.append(Paragraph("Normas: E.060, E.030, ACI 318-2025", normal_style))
-    story.append(Spacer(1, 20))
-    
-    # Línea separadora
-    story.append(Paragraph("<hr width='100%' color='darkblue'/>", normal_style))
-    story.append(Spacer(1, 15))
-    
-    # Información del proyecto
-    story.append(Paragraph("INFORMACIÓN DEL PROYECTO", heading_style))
-    
-    # Tabla de información del proyecto
-    project_data = [
-        ['Fecha:', datos_proyecto['fecha']],
-        ['Usuario:', datos_proyecto['usuario']],
-        ['Versión:', '2.0 - Normas E.060 & ACI 318-2025'],
-        ['Proyecto:', 'Análisis Estructural'],
-        ['Software:', 'CONSORCIO DEJ']
-    ]
-    
-    project_table = Table(project_data, colWidths=[2*inch, 4*inch])
-    project_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
-        ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
-        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 0), (-1, -1), 10),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black)
-    ]))
-    story.append(project_table)
-    story.append(Spacer(1, 15))
-    
-    # Materiales
-    story.append(Paragraph("MATERIALES", heading_style))
-    materials_data = [
-        ['Propiedad', 'Valor', 'Unidad'],
-        ['Resistencia del concreto (f\'c)', f"{datos_proyecto['fc']}", 'kg/cm²'],
-        ['Esfuerzo de fluencia del acero (fy)', f"{datos_proyecto['fy']}", 'kg/cm²'],
-        ['Módulo de elasticidad (Ec)', f"{datos_proyecto['E']:.0f}", 'kg/cm²']
-    ]
-    
-    materials_table = Table(materials_data, colWidths=[2.5*inch, 1.5*inch, 1*inch])
-    materials_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.darkblue),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 11),
-        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 1), (-1, -1), 10),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.white)
-    ]))
-    story.append(materials_table)
-    story.append(Spacer(1, 15))
-    
-    # Geometría y cargas
-    story.append(Paragraph("GEOMETRÍA Y CARGAS", heading_style))
-    geometry_data = [
-        ['Parámetro', 'Valor', 'Unidad'],
-        ['Luz libre de vigas', f"{datos_proyecto['L_viga']}", 'm'],
-        ['Altura de piso', f"{datos_proyecto['h_piso']}", 'm'],
-        ['Número de pisos', f"{datos_proyecto['num_pisos']}", ''],
-        ['Número de vanos', f"{datos_proyecto['num_vanos']}", ''],
-        ['Carga muerta (CM)', f"{datos_proyecto['CM']}", 'kg/m²'],
-        ['Carga viva (CV)', f"{datos_proyecto['CV']}", 'kg/m²']
-    ]
-    
-    geometry_table = Table(geometry_data, colWidths=[2.5*inch, 1.5*inch, 1*inch])
-    geometry_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.darkblue),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 11),
-        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 1), (-1, -1), 10),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.white)
-    ]))
-    story.append(geometry_table)
-    story.append(Spacer(1, 15))
-    
-    # Predimensionamiento
-    story.append(Paragraph("PREDIMENSIONAMIENTO (E.060 Art. 10.2)", heading_style))
-    
-    story.append(Paragraph("Losas Aligeradas:", subheading_style))
-    losa_data = [
-        ['Espesor mínimo', f"{resultados_analisis['h_losa']:.0f}", 'cm'],
-        ['Cuantía mínima de acero', f"{resultados_analisis['rho_min_losa']:.4f}", '(Art. 10.5.1)']
-    ]
-    losa_table = Table(losa_data, colWidths=[2.5*inch, 1.5*inch, 2*inch])
-    losa_table.setStyle(TableStyle([
-        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 0), (-1, -1), 10),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey)
-    ]))
-    story.append(losa_table)
-    story.append(Spacer(1, 8))
-    
-    story.append(Paragraph("Vigas Principales:", subheading_style))
-    viga_data = [
-        ['Peralte efectivo', f"{resultados_analisis['d_viga']:.0f}", 'cm'],
-        ['Ancho de viga', f"{resultados_analisis['b_viga']:.0f}", 'cm'],
-        ['Cuantía mínima', f"{resultados_analisis['rho_min_viga']:.4f}", '(Art. 10.5.1)'],
-        ['Cuantía máxima', f"{resultados_analisis['rho_max_viga']:.4f}", '(Art. 10.3.3)']
-    ]
-    viga_table = Table(viga_data, colWidths=[2.5*inch, 1.5*inch, 2*inch])
-    viga_table.setStyle(TableStyle([
-        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 0), (-1, -1), 10),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey)
-    ]))
-    story.append(viga_table)
-    story.append(Spacer(1, 8))
-    
-    story.append(Paragraph("Columnas:", subheading_style))
-    columna_data = [
-        ['Lado de columna', f"{resultados_analisis['lado_columna']:.0f}", 'cm'],
-        ['Área de columna', f"{resultados_analisis['A_columna']:.0f}", 'cm²'],
-        ['Carga de servicio', f"{resultados_analisis['P_servicio']:.1f}", 'ton'],
-        ['Carga mayorada', f"{resultados_analisis['P_mayorada']:.1f}", 'ton']
-    ]
-    columna_table = Table(columna_data, colWidths=[2.5*inch, 1.5*inch, 2*inch])
-    columna_table.setStyle(TableStyle([
-        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 0), (-1, -1), 10),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey)
-    ]))
-    story.append(columna_table)
-    story.append(Spacer(1, 15))
-    
-    # Análisis sísmico
-    story.append(Paragraph("ANÁLISIS SÍSMICO (E.030)", heading_style))
-    sismo_data = [
-        ['Parámetro', 'Valor', 'Unidad'],
-        ['Peso total del edificio', f"{resultados_analisis['P_edificio']:.1f}", 'ton'],
-        ['Período fundamental', f"{resultados_analisis['T']:.2f}", 's'],
-        ['Coeficiente de amplificación', f"{resultados_analisis['C']:.3f}", '(Art. 3.2.2)'],
-        ['Cortante basal', f"{resultados_analisis['V']:.1f}", 'ton'],
-        ['Zona sísmica', datos_proyecto['zona_sismica'], ''],
-        ['Tipo de suelo', datos_proyecto['tipo_suelo'], ''],
-        ['Sistema estructural', datos_proyecto['tipo_estructura'], '']
-    ]
-    
-    sismo_table = Table(sismo_data, colWidths=[2.5*inch, 1.5*inch, 2*inch])
-    sismo_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.darkblue),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 11),
-        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 1), (-1, -1), 10),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.white)
-    ]))
-    story.append(sismo_table)
-    story.append(Spacer(1, 15))
-    
-    # Diseño estructural
-    story.append(Paragraph("DISEÑO ESTRUCTURAL (E.060 & ACI 318-2025)", heading_style))
-    
-    story.append(Paragraph("Vigas - Flexión:", subheading_style))
-    viga_flexion_data = [
-        ['Momento último', f"{resultados_analisis['M_u']:.1f}", 'kgf·m'],
-        ['Factor de reducción φ', f"{resultados_analisis['phi']}", '(Art. 9.3.2.1)'],
-        ['Acero requerido', f"{resultados_analisis['A_s_corr']:.2f}", 'cm²'],
-        ['Cuantía provista', f"{resultados_analisis['rho_provisto']:.4f}", '']
-    ]
-    viga_flexion_table = Table(viga_flexion_data, colWidths=[2.5*inch, 1.5*inch, 2*inch])
-    viga_flexion_table.setStyle(TableStyle([
-        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 0), (-1, -1), 10),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey)
-    ]))
-    story.append(viga_flexion_table)
-    story.append(Spacer(1, 8))
-    
-    story.append(Paragraph("Vigas - Cortante:", subheading_style))
-    viga_cortante_data = [
-        ['Cortante último', f"{resultados_analisis['V_u']:.1f}", 'kg'],
-        ['Cortante que resiste el concreto', f"{resultados_analisis['V_c']:.1f}", 'kg'],
-        ['Cortante máximo del acero', f"{resultados_analisis['V_s_max']:.1f}", 'kg']
-    ]
-    viga_cortante_table = Table(viga_cortante_data, colWidths=[2.5*inch, 1.5*inch, 2*inch])
-    viga_cortante_table.setStyle(TableStyle([
-        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 0), (-1, -1), 10),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey)
-    ]))
-    story.append(viga_cortante_table)
-    story.append(Spacer(1, 8))
-    
-    story.append(Paragraph("Columnas - Compresión:", subheading_style))
-    columna_comp_data = [
-        ['Carga axial mayorada', f"{resultados_analisis['P_u']:.1f}", 'ton'],
-        ['Factor de reducción φ', f"{resultados_analisis['phi_col']}", '(Art. 9.3.2.2)'],
-        ['Acero mínimo', f"{resultados_analisis['As_min']:.1f}", 'cm² (1% del área bruta)'],
-        ['Acero máximo', f"{resultados_analisis['As_max']:.1f}", 'cm² (6% del área bruta)']
-    ]
-    columna_comp_table = Table(columna_comp_data, colWidths=[2.5*inch, 1.5*inch, 2*inch])
-    columna_comp_table.setStyle(TableStyle([
-        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 0), (-1, -1), 10),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey)
-    ]))
-    story.append(columna_comp_table)
-    story.append(Spacer(1, 15))
-    
-    # Verificaciones
-    story.append(Paragraph("VERIFICACIONES DE SEGURIDAD", heading_style))
-    verificaciones_data = [
-        ['Verificación', 'Estado', ''],
-        ['Vigas - Cuantía mínima', '✓ CUMPLE' if resultados_analisis['cumple_cuantia'] else '✗ NO CUMPLE', ''],
-        ['Vigas - Cuantía máxima', '✓ CUMPLE' if resultados_analisis['rho_provisto'] <= resultados_analisis['rho_max_viga'] else '✗ NO CUMPLE', ''],
-        ['Columnas - Resistencia axial', '✓ CUMPLE' if resultados_analisis['cumple_columna'] else '✗ NO CUMPLE', '']
-    ]
-    
-    verificaciones_table = Table(verificaciones_data, colWidths=[3*inch, 2*inch, 1*inch])
-    verificaciones_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.darkblue),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 11),
-        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 1), (-1, -1), 10),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.white)
-    ]))
-    story.append(verificaciones_table)
-    story.append(Spacer(1, 15))
-    
-    # Conclusiones
-    story.append(Paragraph("CONCLUSIONES Y RECOMENDACIONES", heading_style))
-    conclusiones = [
-        "1. El predimensionamiento cumple con las especificaciones de la Norma E.060",
-        "2. El análisis sísmico se realizó según la Norma E.030",
-        "3. El diseño estructural sigue los criterios de ACI 318-2025",
-        "4. Se verificaron las cuantías mínimas y máximas de acero",
-        "5. La estructura cumple con los requisitos de seguridad"
-    ]
-    
-    for conclusion in conclusiones:
-        story.append(Paragraph(conclusion, normal_style))
-    
-    story.append(Spacer(1, 20))
-    
-    # Firmas
-    story.append(Paragraph("FIRMAS Y APROBACIONES", heading_style))
-    firmas_data = [
-        ['INGENIERO CALCULISTA:', '_________________', f"FECHA: {datos_proyecto['fecha']}"],
-        ['INGENIERO REVISOR:', '_________________', f"FECHA: {datos_proyecto['fecha']}"],
-        ['DIRECTOR DE OBRA:', '_________________', f"FECHA: {datos_proyecto['fecha']}"]
-    ]
-    
-    firmas_table = Table(firmas_data, colWidths=[2*inch, 2*inch, 2*inch])
-    firmas_table.setStyle(TableStyle([
-        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 0), (-1, -1), 10),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey)
-    ]))
-    story.append(firmas_table)
-    story.append(Spacer(1, 20))
-    
-    # Footer
-    story.append(Paragraph("<hr width='100%' color='darkblue'/>", normal_style))
-    story.append(Spacer(1, 10))
-    story.append(Paragraph("CONSORCIO DEJ - Ingeniería y Construcción", normal_style))
-    story.append(Paragraph("Software de Análisis Estructural Profesional", normal_style))
-    story.append(Paragraph("Desarrollado con Python, Streamlit y Plotly", normal_style))
-    story.append(Paragraph("Normas: E.060, E.030, ACI 318-2025", normal_style))
-    
-    # Generar PDF
-    doc.build(story)
-    buffer.seek(0)
-    return buffer
+    try:
+        buffer = io.BytesIO()
+        
+        # Configuración del documento con márgenes más pequeños para optimizar espacio
+        doc = SimpleDocTemplate(
+            buffer,
+            pagesize=A4,
+            leftMargin=0.5*inch,
+            rightMargin=0.5*inch,
+            topMargin=0.5*inch,
+            bottomMargin=0.5*inch
+        )
+        
+        story = []
+        styles = getSampleStyleSheet()
+        
+        # Estilo para el título principal optimizado
+        title_style = ParagraphStyle(
+            'TitleStyle',
+            parent=styles['Heading1'],
+            fontSize=16,
+            alignment=TA_CENTER,
+            textColor=colors.HexColor('#1e3c72'),
+            spaceAfter=20,
+            fontName='Helvetica-Bold'
+        )
+        
+        # Estilo para encabezados de sección
+        heading_style = ParagraphStyle(
+            'HeadingStyle',
+            parent=styles['Heading2'],
+            fontSize=12,
+            textColor=colors.HexColor('#1e3c72'),
+            spaceAfter=10,
+            fontName='Helvetica-Bold'
+        )
+        
+        # Estilo para texto normal
+        normal_style = ParagraphStyle(
+            'NormalStyle',
+            parent=styles['Normal'],
+            fontSize=9,
+            spaceAfter=6,
+            fontName='Helvetica'
+        )
+        
+        # Encabezado del documento
+        story.append(Paragraph("CONSORCIO DEJ - REPORTE ESTRUCTURAL", title_style))
+        story.append(Spacer(1, 15))
+        
+        # Información básica en tabla compacta
+        info_data = [
+            ["Fecha:", datos_proyecto['fecha']],
+            ["Usuario:", datos_proyecto['usuario']],
+            ["Proyecto:", "Análisis Estructural"],
+            ["Software:", "CONSORCIO DEJ v2.0"]
+        ]
+        
+        info_table = Table(info_data, colWidths=[1.5*inch, 4*inch])
+        info_table.setStyle(TableStyle([
+            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('ALIGN', (0, 0), (0, -1), 'LEFT'),
+            ('ALIGN', (1, 0), (1, -1), 'LEFT'),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        ]))
+        story.append(info_table)
+        story.append(Spacer(1, 15))
+        
+        # Sección de Materiales
+        story.append(Paragraph("MATERIALES", heading_style))
+        
+        materials_data = [
+            ["Propiedad", "Valor", "Unidad"],
+            ["f'c (Concreto)", f"{datos_proyecto['fc']}", "kg/cm²"],
+            ["fy (Acero)", f"{datos_proyecto['fy']}", "kg/cm²"],
+            ["Módulo Elasticidad", f"{datos_proyecto['E']:.0f}", "kg/cm²"]
+        ]
+        
+        materials_table = Table(materials_data, colWidths=[2*inch, 1.5*inch, 1*inch])
+        materials_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e3c72')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        ]))
+        story.append(materials_table)
+        story.append(Spacer(1, 10))
+        
+        # Sección de Geometría y Cargas
+        story.append(Paragraph("GEOMETRÍA Y CARGAS", heading_style))
+        
+        geometry_data = [
+            ["Parámetro", "Valor", "Unidad"],
+            ["Luz libre de vigas", f"{datos_proyecto['L_viga']}", "m"],
+            ["Altura de piso", f"{datos_proyecto['h_piso']}", "m"],
+            ["Número de pisos", f"{datos_proyecto['num_pisos']}", ""],
+            ["Número de vanos", f"{datos_proyecto['num_vanos']}", ""],
+            ["Carga muerta (CM)", f"{datos_proyecto['CM']}", "kg/m²"],
+            ["Carga viva (CV)", f"{datos_proyecto['CV']}", "kg/m²"]
+        ]
+        
+        geometry_table = Table(geometry_data, colWidths=[2*inch, 1.5*inch, 1*inch])
+        geometry_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e3c72')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        ]))
+        story.append(geometry_table)
+        story.append(Spacer(1, 10))
+        
+        # Sección de Predimensionamiento
+        story.append(Paragraph("PREDIMENSIONAMIENTO (E.060 Art. 10.2)", heading_style))
+        
+        predim_data = [
+            ["Elemento", "Propiedad", "Valor", "Unidad"],
+            ["Losas", "Espesor mínimo", f"{resultados_analisis['h_losa']:.0f}", "cm"],
+            ["Vigas", "Peralte efectivo", f"{resultados_analisis['d_viga']:.0f}", "cm"],
+            ["Vigas", "Ancho de viga", f"{resultados_analisis['b_viga']:.0f}", "cm"],
+            ["Columnas", "Lado de columna", f"{resultados_analisis['lado_columna']:.0f}", "cm"],
+            ["Columnas", "Área de columna", f"{resultados_analisis['A_columna']:.0f}", "cm²"]
+        ]
+        
+        predim_table = Table(predim_data, colWidths=[1.5*inch, 1.5*inch, 1*inch, 0.8*inch])
+        predim_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e3c72')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 8),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+        ]))
+        story.append(predim_table)
+        story.append(Spacer(1, 10))
+        
+        # Sección de Análisis Sísmico
+        story.append(Paragraph("ANÁLISIS SÍSMICO (E.030)", heading_style))
+        
+        sismo_data = [
+            ["Parámetro", "Valor", "Unidad"],
+            ["Peso total del edificio", f"{resultados_analisis['P_edificio']:.1f}", "ton"],
+            ["Período fundamental", f"{resultados_analisis['T']:.2f}", "s"],
+            ["Coeficiente de amplificación", f"{resultados_analisis['C']:.3f}", ""],
+            ["Cortante basal", f"{resultados_analisis['V']:.1f}", "ton"],
+            ["Zona sísmica", datos_proyecto['zona_sismica'], ""],
+            ["Tipo de suelo", datos_proyecto['tipo_suelo'], ""]
+        ]
+        
+        sismo_table = Table(sismo_data, colWidths=[2*inch, 1.5*inch, 1*inch])
+        sismo_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e3c72')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        ]))
+        story.append(sismo_table)
+        story.append(Spacer(1, 10))
+        
+        # Sección de Diseño Estructural
+        story.append(Paragraph("DISEÑO ESTRUCTURAL (E.060 & ACI 318-2025)", heading_style))
+        
+        diseño_data = [
+            ["Elemento", "Propiedad", "Valor", "Unidad"],
+            ["Viga - Flexión", "Momento último", f"{resultados_analisis['M_u']:.1f}", "kgf·m"],
+            ["Viga - Flexión", "Acero requerido", f"{resultados_analisis['A_s_corr']:.2f}", "cm²"],
+            ["Viga - Cortante", "Cortante último", f"{resultados_analisis['V_u']:.1f}", "kg"],
+            ["Columna", "Carga axial mayorada", f"{resultados_analisis['P_u']:.1f}", "ton"],
+            ["Columna", "Acero mínimo", f"{resultados_analisis['As_min']:.1f}", "cm²"]
+        ]
+        
+        diseño_table = Table(diseño_data, colWidths=[1.5*inch, 1.5*inch, 1*inch, 0.8*inch])
+        diseño_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e3c72')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 8),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+        ]))
+        story.append(diseño_table)
+        story.append(Spacer(1, 10))
+        
+        # Sección de Verificaciones
+        story.append(Paragraph("VERIFICACIONES DE SEGURIDAD", heading_style))
+        
+        verificaciones_data = [
+            ["Verificación", "Estado"],
+            ["Vigas - Cuantía mínima", '✓ CUMPLE' if resultados_analisis['cumple_cuantia'] else '✗ NO CUMPLE'],
+            ["Vigas - Cuantía máxima", '✓ CUMPLE' if resultados_analisis['rho_provisto'] <= resultados_analisis['rho_max_viga'] else '✗ NO CUMPLE'],
+            ["Columnas - Resistencia axial", '✓ CUMPLE' if resultados_analisis['cumple_columna'] else '✗ NO CUMPLE']
+        ]
+        
+        verificaciones_table = Table(verificaciones_data, colWidths=[3*inch, 2*inch])
+        verificaciones_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e3c72')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        ]))
+        story.append(verificaciones_table)
+        story.append(Spacer(1, 10))
+        
+        # Conclusiones
+        story.append(Paragraph("CONCLUSIONES Y RECOMENDACIONES", heading_style))
+        conclusiones = [
+            "1. El predimensionamiento cumple con las especificaciones de la Norma E.060",
+            "2. El análisis sísmico se realizó según la Norma E.030",
+            "3. El diseño estructural sigue los criterios de ACI 318-2025",
+            "4. Se verificaron las cuantías mínimas y máximas de acero",
+            "5. La estructura cumple con los requisitos de seguridad"
+        ]
+        
+        for conclusion in conclusiones:
+            story.append(Paragraph(conclusion, normal_style))
+        
+        story.append(Spacer(1, 15))
+        
+        # Firmas
+        story.append(Paragraph("FIRMAS Y APROBACIONES", heading_style))
+        firmas_data = [
+            ["INGENIERO CALCULISTA:", "_________________", f"FECHA: {datos_proyecto['fecha']}"],
+            ["INGENIERO REVISOR:", "_________________", f"FECHA: {datos_proyecto['fecha']}"],
+            ["DIRECTOR DE OBRA:", "_________________", f"FECHA: {datos_proyecto['fecha']}"]
+        ]
+        
+        firmas_table = Table(firmas_data, colWidths=[2*inch, 2*inch, 2*inch])
+        firmas_table.setStyle(TableStyle([
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey)
+        ]))
+        story.append(firmas_table)
+        story.append(Spacer(1, 15))
+        
+        # Pie de página
+        story.append(Paragraph("<hr/>", normal_style))
+        story.append(Paragraph("CONSORCIO DEJ - Ingeniería y Construcción", normal_style))
+        story.append(Paragraph("Software de Análisis Estructural Profesional", normal_style))
+        story.append(Paragraph("Normas: E.060, E.030, ACI 318-2025", normal_style))
+        story.append(Paragraph("Generado automáticamente por CONSORCIO DEJ", 
+                             ParagraphStyle(name='Footer', fontSize=8, alignment=TA_CENTER)))
+        
+        # Construir el PDF
+        doc.build(story)
+        buffer.seek(0)
+        return buffer
+        
+    except Exception as e:
+        st.error(f"Error al generar PDF: {str(e)}")
+        return None
 
 # Verificar autenticación
 if 'authenticated' not in st.session_state:
@@ -1058,73 +981,80 @@ if st.session_state.authenticated:
             </div>
             """, unsafe_allow_html=True)
         
-        # Botón para generar PDF
+        # Botón para generar PDF con manejo de errores mejorado
         if st.button("📄 GENERAR REPORTE PDF PROFESIONAL", type="primary", use_container_width=True):
-            st.success("✅ ¡Generando reporte profesional!")
-            
-            # Preparar datos para el reporte
-            datos_proyecto = {
-                'fecha': datetime.now().strftime('%d/%m/%Y %H:%M'),
-                'usuario': st.session_state.username.upper(),
-                'fc': f_c,
-                'fy': f_y,
-                'E': E,
-                'L_viga': L_viga,
-                'h_piso': h_piso,
-                'num_pisos': num_pisos,
-                'num_vanos': num_vanos,
-                'CM': CM,
-                'CV': CV,
-                'zona_sismica': zona_sismica,
-                'tipo_suelo': tipo_suelo,
-                'tipo_estructura': tipo_estructura,
-                'factor_importancia': factor_importancia
-            }
-            
-            resultados_analisis = {
-                'h_losa': h_losa*100,
-                'b_viga': b_viga,
-                'd_viga': d_viga,
-                'lado_columna': lado_columna,
-                'A_columna': A_columna,
-                'A_s_corr': A_s_corr,
-                'V': V/1000,
-                'T': T,
-                'C': C,
-                'M_u': M_u/100,
-                'V_u': V_u,
-                'V_c': V_c,
-                'V_s_max': V_s_max,
-                'P_u': P_u/1000,
-                'As_min': As_min,
-                'As_max': As_max,
-                'phi': phi,
-                'phi_col': phi_col,
-                'rho_min_losa': rho_min_losa,
-                'rho_min_viga': rho_min_viga,
-                'rho_max_viga': rho_max_viga,
-                'rho_provisto': rho_provisto,
-                'P_servicio': P_servicio/1000,
-                'P_mayorada': P_mayorada/1000,
-                'P_edificio': P_edificio/1000,
-                'cumple_cuantia': cumple_cuantia,
-                'cumple_columna': Pn <= P0
-            }
-            
-            # Generar reporte en PDF
-            pdf_buffer = generar_pdf_profesional(datos_proyecto, resultados_analisis)
-            
-            # Crear botón de descarga
-            st.download_button(
-                label="📥 DESCARGAR REPORTE PROFESIONAL (.pdf)",
-                data=pdf_buffer.getvalue(),
-                file_name=f"Reporte_Estructural_CONSORCIO_DEJ_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
-                mime="application/pdf",
-                type="primary",
-                use_container_width=True
-            )
-            
-            st.success("✅ Reporte generado exitosamente. Haz clic en 'DESCARGAR REPORTE PROFESIONAL' para descargarlo.")
+            with st.spinner('Generando reporte PDF...'):
+                try:
+                    # Preparar datos para el reporte
+                    datos_proyecto = {
+                        'fecha': datetime.now().strftime('%d/%m/%Y %H:%M'),
+                        'usuario': st.session_state.username.upper(),
+                        'fc': f_c,
+                        'fy': f_y,
+                        'E': E,
+                        'L_viga': L_viga,
+                        'h_piso': h_piso,
+                        'num_pisos': num_pisos,
+                        'num_vanos': num_vanos,
+                        'CM': CM,
+                        'CV': CV,
+                        'zona_sismica': zona_sismica,
+                        'tipo_suelo': tipo_suelo,
+                        'tipo_estructura': tipo_estructura,
+                        'factor_importancia': factor_importancia
+                    }
+                    
+                    resultados_analisis = {
+                        'h_losa': h_losa*100,
+                        'b_viga': b_viga,
+                        'd_viga': d_viga,
+                        'lado_columna': lado_columna,
+                        'A_columna': A_columna,
+                        'A_s_corr': A_s_corr,
+                        'V': V/1000,
+                        'T': T,
+                        'C': C,
+                        'M_u': M_u/100,
+                        'V_u': V_u,
+                        'V_c': V_c,
+                        'V_s_max': V_s_max,
+                        'P_u': P_u/1000,
+                        'As_min': As_min,
+                        'As_max': As_max,
+                        'phi': phi,
+                        'phi_col': phi_col,
+                        'rho_min_losa': rho_min_losa,
+                        'rho_min_viga': rho_min_viga,
+                        'rho_max_viga': rho_max_viga,
+                        'rho_provisto': rho_provisto,
+                        'P_servicio': P_servicio/1000,
+                        'P_mayorada': P_mayorada/1000,
+                        'P_edificio': P_edificio/1000,
+                        'cumple_cuantia': cumple_cuantia,
+                        'cumple_columna': Pn <= P0
+                    }
+                    
+                    # Generar reporte en PDF
+                    pdf_buffer = generar_pdf_profesional(datos_proyecto, resultados_analisis)
+                    
+                    if pdf_buffer:
+                        # Crear botón de descarga
+                        st.success("✅ Reporte generado exitosamente!")
+                        
+                        st.download_button(
+                            label="📥 DESCARGAR REPORTE PDF",
+                            data=pdf_buffer.getvalue(),
+                            file_name=f"Reporte_Estructural_{datetime.now().strftime('%Y%m%d')}.pdf",
+                            mime="application/pdf",
+                            type="primary",
+                            use_container_width=True
+                        )
+                    else:
+                        st.error("No se pudo generar el PDF. Por favor intente nuevamente.")
+                        
+                except Exception as e:
+                    st.error(f"Error inesperado: {str(e)}")
+                    st.info("💡 Sugerencia: Verifique que todos los datos estén completos y vuelva a intentar.")
         
         st.balloons()
         st.success("🎉 ¡Análisis estructural completado exitosamente!")
