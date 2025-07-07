@@ -61,6 +61,16 @@ def calcular_predimensionamiento(L_viga, num_pisos, num_vanos, CM, CV, fc, fy):
 # =====================
 # INTERFAZ STREAMLIT
 # =====================
+
+# Portada mejorada estilo APP1.py
+st.markdown("""
+<div style="text-align: center; padding: 20px; background-color: #FFD700; color: #2F2F2F; border-radius: 10px; margin-bottom: 20px; border: 2px solid #FFA500;">
+    <h1>🏗️ CONSORCIO DEJ</h1>
+    <p style="font-size: 18px; font-weight: bold;">Ingeniería y Construcción</p>
+    <p style="font-size: 14px;">Software de Análisis Estructural Profesional</p>
+</div>
+""", unsafe_allow_html=True)
+
 st.set_page_config(page_title="CONSORCIO DEJ - Análisis Estructural", page_icon="🏗️", layout="wide")
 
 if 'authenticated' not in st.session_state:
@@ -94,7 +104,17 @@ with st.sidebar:
     else:
         st.success("🏢 Plan Empresarial")
     st.markdown("---")
-    opcion = st.selectbox("Menú", ["🏗️ Cálculo Básico", "📊 Análisis Completo", "📄 Reporte", "ℹ️ Acerca de"])
+    opcion = st.selectbox(
+        "Menú",
+        [
+            "🏗️ Cálculo Básico",
+            "📊 Análisis Completo",
+            "📄 Reporte",
+            "📚 Fórmulas de Diseño Estructural",
+            "ℹ️ Acerca de"
+        ],
+        index=0
+    )
     st.markdown("---")
     st.header("📋 Datos del Proyecto")
     f_c = st.number_input("f'c (kg/cm²)", 175, 700, 210, 10)
@@ -148,10 +168,122 @@ elif opcion == "📄 Reporte":
     st.write(f"**Luz libre:** {L_viga} m | **Pisos:** {num_pisos}")
     st.write(f"**Zona Sísmica:** {zona_sismica} | **Tipo de Suelo:** {tipo_suelo}")
     st.write(f"**Tipo de Estructura:** {tipo_estructura}")
+    
+    # Calcular predimensionamiento para el reporte
+    predim = calcular_predimensionamiento(L_viga, num_pisos, num_vanos, CM, CV, f_c, f_y)
     st.write(f"**Espesor de losa:** {predim['h_losa']*100:.0f} cm")
     st.write(f"**Dimensiones de viga:** {predim['b_viga']:.0f}×{predim['d_viga']:.0f} cm")
     st.write(f"**Dimensiones de columna:** {predim['lado_columna']:.0f}×{predim['lado_columna']:.0f} cm")
     st.success("Reporte generado. Copia y pega estos resultados para tu informe.")
+
+elif opcion == "📚 Fórmulas de Diseño Estructural":
+    st.header("📚 Fórmulas de Diseño Estructural")
+    st.info("Fórmulas clave según ACI 318-19, Nilson, McCormac, Hibbeler y Antonio Blanco.")
+    st.markdown("""
+### 1. Propiedades del Concreto y Acero
+- **Resistencia a la compresión del concreto (f'c):** Resistencia característica a 28 días (MPa o kg/cm²).
+- **Módulo de elasticidad del concreto (Ec):**
+  
+  \( E_c = 4700 \sqrt{f'_c} \) (MPa)  
+  (ACI 318-19, Sección 19.2.2.1)
+- **Módulo de elasticidad del acero (Es):**
+  
+  \( E_s = 200,000 \) MPa (o \(2 \times 10^6\) kg/cm²)
+- **Deformación máxima del concreto en compresión (εcu):**
+  
+  \( \varepsilon_{cu} = 0.003 \) (ACI 318-19, Sección 22.2.2.1)
+
+### 2. Flexión en Vigas (Diseño por Momento)
+- **Cuantía balanceada (ρb):**
+  
+  \( \rho_b = \frac{0.85 \beta_1 f'_c}{f_y} \left( \frac{600}{600+f_y} \right) \)
+  
+  \( \beta_1 = 0.85 \) si \(f'_c \leq 28\) MPa; se reduce en 0.05 por cada 7 MPa arriba de 28 MPa.
+- **Cuantía máxima (ρmax):**
+  
+  \( \rho_{max} = 0.75 \rho_b \) (ACI 318-19, Sección 9.3.3)
+- **Momento resistente nominal (Mn):**
+  
+  \( M_n = A_s f_y (d - \frac{a}{2}) \)
+- **Profundidad del bloque equivalente de esfuerzos (a):**
+  
+  \( a = \frac{A_s f_y}{0.85 f'_c b} \)
+- **Momento último (Mu):**
+  
+  \( M_u = \phi M_n \); \(\phi = 0.90\) para flexión
+
+### 3. Corte en Vigas
+- **Resistencia al corte del concreto (Vc):**
+  
+  \( V_c = 0.17 \sqrt{f'_c} b_w d \) (MPa) (ACI 318-19, Sección 22.5.5.1)
+- **Resistencia del acero de estribos (Vs):**
+  
+  \( V_s = \frac{A_v f_y d}{s} \)
+- **Corte último (Vu):**
+  
+  \( V_u \leq \phi (V_c + V_s) \); \(\phi = 0.75\) para corte
+- **Separación máxima de estribos:**
+  
+  \( s_{max} = \begin{cases} 2d & \text{si } V_s \leq 0.33 \sqrt{f'_c} b_w d \\ 4d & \text{si } V_s > 0.33 \sqrt{f'_c} b_w d \end{cases} \)
+
+### 4. Columnas (Compresión y Flexo-Compresión)
+- **Carga axial nominal (Pn):**
+  
+  \( P_n = 0.85 f'_c (A_g - A_{st}) + f_y A_{st} \) (Columna corta)
+- **Carga axial última (Pu):**
+  
+  \( P_u = \phi P_n \); \(\phi = 0.65\) (con estribos), \(0.75\) (espiral)
+- **Efectos de esbeltez (Klu/r):**
+  
+  Si \( \frac{Kl_u}{r} > 22 \), considerar efectos de segundo orden (ACI 318-19, Sección 6.2.5).
+
+### 5. Losas Armadas en una Dirección
+- **Espesor mínimo (h):**
+  
+  \( h = \frac{L}{20} \) (simplemente apoyada) (ACI 318-19, Tabla 7.3.1.1)
+- **Refuerzo mínimo por temperatura:**
+  
+  \( A_{s,min} = 0.0018 b h \) (para \(f_y = 420\) MPa)
+
+### 6. Adherencia y Anclaje
+- **Longitud de desarrollo (ld) para barras en tracción:**
+  
+  \( l_d = \left( \frac{f_y \psi_t \psi_e}{2.1 \lambda \sqrt{f'_c}} \right) d_b \) (ACI 318-19, Sección 25.4.2)
+  
+  \(\psi_t, \psi_e\): Factores por ubicación y recubrimiento.
+
+### 7. Servicio (Agrietamiento y Deflexión)
+- **Control de agrietamiento:**
+  
+  \( w = 0.076 \beta_s \frac{d_c^3}{A} \) (MPa) (ACI 318-19, Sección 24.3)
+  
+  \(w\): Ancho de grieta, \(d_c\): Recubrimiento, \(A\): Área de concreto alrededor de la barra.
+
+---
+**Fuentes:**
+- ACI 318-19: Requisitos generales y fórmulas base.
+- McCormac & Nilson: Detalles de diseño en flexión, corte y columnas.
+- Hibbeler: Análisis estructural previo al diseño.
+- Antonio Blanco: Aplicaciones en edificaciones.
+""", unsafe_allow_html=True)
+    st.latex(r"E_c = 4700 \, \sqrt{f'_c} ")
+    st.latex(r"E_s = 200000 \, \text{MPa}")
+    st.latex(r"\varepsilon_{cu} = 0.003")
+    st.latex(r"\rho_b = \frac{0.85 \beta_1 f'_c}{f_y} \left( \frac{600}{600+f_y} \right)")
+    st.latex(r"\rho_{max} = 0.75 \rho_b")
+    st.latex(r"M_n = A_s f_y (d - \frac{a}{2})")
+    st.latex(r"a = \frac{A_s f_y}{0.85 f'_c b}")
+    st.latex(r"M_u = \phi M_n; \, \phi = 0.90")
+    st.latex(r"V_c = 0.17 \sqrt{f'_c} b_w d")
+    st.latex(r"V_s = \frac{A_v f_y d}{s}")
+    st.latex(r"V_u \leq \phi (V_c + V_s); \, \phi = 0.75")
+    st.latex(r"s_{max} = \begin{cases} 2d & V_s \leq 0.33 \sqrt{f'_c} b_w d \\ 4d & V_s > 0.33 \sqrt{f'_c} b_w d \end{cases}")
+    st.latex(r"P_n = 0.85 f'_c (A_g - A_{st}) + f_y A_{st}")
+    st.latex(r"P_u = \phi P_n; \, \phi = 0.65, 0.75")
+    st.latex(r"h = \frac{L}{20}")
+    st.latex(r"A_{s,min} = 0.0018 b h")
+    st.latex(r"l_d = \left( \frac{f_y \psi_t \psi_e}{2.1 \lambda \sqrt{f'_c}} \right) d_b")
+    st.latex(r"w = 0.076 \beta_s \frac{d_c^3}{A}")
 
 elif opcion == "ℹ️ Acerca de":
     st.header("ℹ️ Acerca de CONSORCIO DEJ")

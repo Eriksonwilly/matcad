@@ -43,20 +43,31 @@ def check_requirements():
     required_packages = [
         'streamlit',
         'numpy',
-        'pandas',
+        'pandas'
+    ]
+    
+    optional_packages = [
         'plotly',
         'reportlab'
     ]
     
-    missing_packages = []
+    missing_required = []
+    missing_optional = []
     
     for package in required_packages:
         if package not in content:
-            missing_packages.append(package)
+            missing_required.append(package)
     
-    if missing_packages:
-        print(f"⚠️ Paquetes faltantes en requirements.txt: {', '.join(missing_packages)}")
+    for package in optional_packages:
+        if package not in content:
+            missing_optional.append(package)
+    
+    if missing_required:
+        print(f"❌ Paquetes requeridos faltantes en requirements.txt: {', '.join(missing_required)}")
         return False
+    
+    if missing_optional:
+        print(f"ℹ️ Paquetes opcionales no incluidos: {', '.join(missing_optional)}")
     
     print("✅ requirements.txt verificado")
     return True
@@ -74,8 +85,7 @@ def check_config():
     
     required_configs = [
         'headless = true',
-        'port = 8501',
-        'primaryColor = "#FFD700"'
+        'port = 8501'
     ]
     
     missing_configs = []
@@ -117,6 +127,11 @@ def main():
         print("5. Conecta tu repositorio")
         print("6. Deploy automático")
         print("\n✅ Tu app estará lista en minutos!")
+        
+        print("\n🖥️ Para ejecutar localmente en Windows:")
+        print("1. Doble clic en 'run_app.bat'")
+        print("2. O ejecuta: python deploy_windows.py")
+        print("3. O ejecuta: streamlit run APP.py")
     else:
         print("⚠️ Hay problemas que deben corregirse antes del deployment:")
         
