@@ -7,6 +7,8 @@ from datetime import datetime
 import hashlib
 import io
 import base64
+from weasyprint import HTML, CSS
+from weasyprint.text.fonts import FontConfiguration
 
 # Configuración de la página
 st.set_page_config(
@@ -90,137 +92,357 @@ def check_credentials(username, password):
     }
     return username in valid_users and valid_users[username] == hash_password(password)
 
-# Función para generar reporte en texto formateado
-def generar_reporte_texto(datos_proyecto, resultados_analisis):
-    reporte = f"""
-===============================================================================
-                    CONSORCIO DEJ - REPORTE ESTRUCTURAL PROFESIONAL
-===============================================================================
-
-FECHA: {datos_proyecto['fecha']}
-USUARIO: {datos_proyecto['usuario']}
-VERSIÓN: 2.0 - Normas E.060 & ACI 318-2025
-
-===============================================================================
-                                DATOS DEL PROYECTO
-===============================================================================
-
-MATERIALES:
-• Resistencia del concreto (f'c): {datos_proyecto['fc']} kg/cm²
-• Esfuerzo de fluencia del acero (fy): {datos_proyecto['fy']} kg/cm²
-• Módulo de elasticidad del concreto (Ec): {datos_proyecto['E']:.0f} kg/cm²
-
-GEOMETRÍA:
-• Luz libre de vigas: {datos_proyecto['L_viga']} m
-• Altura de piso: {datos_proyecto['h_piso']} m
-• Número de pisos: {datos_proyecto['num_pisos']}
-• Número de vanos: {datos_proyecto['num_vanos']}
-
-CARGAS:
-• Carga muerta (CM): {datos_proyecto['CM']} kg/m²
-• Carga viva (CV): {datos_proyecto['CV']} kg/m²
-
-PARÁMETROS SÍSMICOS:
-• Zona sísmica: {datos_proyecto['zona_sismica']}
-• Tipo de suelo: {datos_proyecto['tipo_suelo']}
-• Sistema estructural: {datos_proyecto['tipo_estructura']}
-• Factor de importancia: {datos_proyecto['factor_importancia']}
-
-===============================================================================
-                            PREDIMENSIONAMIENTO (E.060 Art. 10.2)
-===============================================================================
-
-LOSAS ALIGERADAS:
-• Espesor mínimo: {resultados_analisis['h_losa']:.0f} cm
-• Cuantía mínima de acero: {resultados_analisis['rho_min_losa']:.4f} (Art. 10.5.1)
-
-VIGAS PRINCIPALES:
-• Peralte efectivo: {resultados_analisis['d_viga']:.0f} cm
-• Ancho de viga: {resultados_analisis['b_viga']:.0f} cm
-• Cuantía mínima: {resultados_analisis['rho_min_viga']:.4f} (Art. 10.5.1)
-• Cuantía máxima: {resultados_analisis['rho_max_viga']:.4f} (Art. 10.3.3)
-
-COLUMNAS:
-• Lado de columna: {resultados_analisis['lado_columna']:.0f} cm
-• Área de columna: {resultados_analisis['A_columna']:.0f} cm²
-• Carga de servicio: {resultados_analisis['P_servicio']:.1f} ton
-• Carga mayorada: {resultados_analisis['P_mayorada']:.1f} ton
-
-===============================================================================
-                                ANÁLISIS SÍSMICO (E.030)
-===============================================================================
-
-PESO TOTAL DEL EDIFICIO:
-• Peso total: {resultados_analisis['P_edificio']:.1f} ton
-
-PERÍODO FUNDAMENTAL:
-• T = 0.1 × N = 0.1 × {datos_proyecto['num_pisos']} = {resultados_analisis['T']:.2f} s
-
-COEFICIENTE DE AMPLIFICACIÓN SÍSMICA:
-• C = {resultados_analisis['C']:.3f} (Art. 3.2.2)
-
-CORTANTE BASAL:
-• V = {resultados_analisis['V']:.1f} ton
-
-===============================================================================
-                            DISEÑO ESTRUCTURAL (E.060 & ACI 318-2025)
-===============================================================================
-
-DISEÑO DE VIGAS - FLEXIÓN:
-• Momento último: {resultados_analisis['M_u']:.1f} kgf·m
-• Factor de reducción φ: {resultados_analisis['phi']} (Art. 9.3.2.1)
-• Acero requerido: {resultados_analisis['A_s_corr']:.2f} cm²
-• Cuantía provista: {resultados_analisis['rho_provisto']:.4f}
-• Estado: {'CUMPLE' if resultados_analisis['cumple_cuantia'] else 'NO CUMPLE'} cuantías
-
-DISEÑO DE VIGAS - CORTANTE:
-• Cortante último: {resultados_analisis['V_u']:.1f} kg
-• Cortante que resiste el concreto: {resultados_analisis['V_c']:.1f} kg
-• Cortante máximo que resiste el acero: {resultados_analisis['V_s_max']:.1f} kg
-
-DISEÑO DE COLUMNAS - COMPRESIÓN:
-• Carga axial mayorada: {resultados_analisis['P_u']:.1f} ton
-• Factor de reducción φ: {resultados_analisis['phi_col']} (Art. 9.3.2.2)
-• Acero mínimo: {resultados_analisis['As_min']:.1f} cm² (1% del área bruta)
-• Acero máximo: {resultados_analisis['As_max']:.1f} cm² (6% del área bruta)
-
-===============================================================================
-                                VERIFICACIONES DE SEGURIDAD
-===============================================================================
-
-VIGAS:
-• Cuantía mínima: {'✓ CUMPLE' if resultados_analisis['cumple_cuantia'] else '✗ NO CUMPLE'}
-• Cuantía máxima: {'✓ CUMPLE' if resultados_analisis['rho_provisto'] <= resultados_analisis['rho_max_viga'] else '✗ NO CUMPLE'}
-
-COLUMNAS:
-• Resistencia axial: {'✓ CUMPLE' if resultados_analisis['cumple_columna'] else '✗ NO CUMPLE'}
-
-===============================================================================
-                                CONCLUSIONES Y RECOMENDACIONES
-===============================================================================
-
-1. El predimensionamiento cumple con las especificaciones de la Norma E.060
-2. El análisis sísmico se realizó según la Norma E.030
-3. El diseño estructural sigue los criterios de ACI 318-2025
-4. Se verificaron las cuantías mínimas y máximas de acero
-5. La estructura cumple con los requisitos de seguridad
-
-===============================================================================
-                                FIRMAS Y APROBACIONES
-===============================================================================
-
-INGENIERO CALCULISTA: _________________     FECHA: {datos_proyecto['fecha']}
-INGENIERO REVISOR: ___________________     FECHA: {datos_proyecto['fecha']}
-DIRECTOR DE OBRA: ____________________     FECHA: {datos_proyecto['fecha']}
-
-===============================================================================
-                                CONSORCIO DEJ - Ingeniería y Construcción
-                                Software de Análisis Estructural Profesional
-                                Desarrollado con Python, Streamlit y Plotly
-                                Normas: E.060, E.030, ACI 318-2025
-===============================================================================
-"""
-    return reporte
+# Función para generar PDF profesional
+def generar_pdf_profesional(datos_proyecto, resultados_analisis):
+    # Crear HTML con estilo profesional
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>CONSORCIO DEJ - Reporte Estructural</title>
+        <style>
+            @page {{
+                size: A4;
+                margin: 2cm;
+                @top-center {{
+                    content: "CONSORCIO DEJ - Ingeniería y Construcción";
+                    font-size: 10pt;
+                    color: #666;
+                }}
+                @bottom-center {{
+                    content: "Página " counter(page) " de " counter(pages);
+                    font-size: 10pt;
+                    color: #666;
+                }}
+            }}
+            
+            body {{
+                font-family: 'Arial', sans-serif;
+                font-size: 11pt;
+                line-height: 1.4;
+                color: #333;
+                margin: 0;
+                padding: 0;
+            }}
+            
+            .header {{
+                text-align: center;
+                margin-bottom: 30px;
+                border-bottom: 3px solid #1e3c72;
+                padding-bottom: 20px;
+            }}
+            
+            .header h1 {{
+                color: #1e3c72;
+                font-size: 24pt;
+                margin: 0;
+                font-weight: bold;
+            }}
+            
+            .header p {{
+                color: #666;
+                font-size: 12pt;
+                margin: 5px 0;
+            }}
+            
+            .section {{
+                margin: 20px 0;
+                page-break-inside: avoid;
+            }}
+            
+            .section h2 {{
+                color: #1e3c72;
+                font-size: 14pt;
+                border-bottom: 2px solid #1e3c72;
+                padding-bottom: 5px;
+                margin-bottom: 15px;
+            }}
+            
+            .section h3 {{
+                color: #2a5298;
+                font-size: 12pt;
+                margin: 15px 0 10px 0;
+            }}
+            
+            .info-grid {{
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 20px;
+                margin: 15px 0;
+            }}
+            
+            .info-item {{
+                background: #f8f9fa;
+                padding: 10px;
+                border-left: 4px solid #1e3c72;
+                border-radius: 5px;
+            }}
+            
+            .info-item strong {{
+                color: #1e3c72;
+            }}
+            
+            .table {{
+                width: 100%;
+                border-collapse: collapse;
+                margin: 15px 0;
+                font-size: 10pt;
+            }}
+            
+            .table th, .table td {{
+                border: 1px solid #ddd;
+                padding: 8px;
+                text-align: left;
+            }}
+            
+            .table th {{
+                background: #1e3c72;
+                color: white;
+                font-weight: bold;
+            }}
+            
+            .table tr:nth-child(even) {{
+                background: #f8f9fa;
+            }}
+            
+            .verification {{
+                margin: 10px 0;
+                padding: 10px;
+                border-radius: 5px;
+            }}
+            
+            .verification.success {{
+                background: #d4edda;
+                border: 1px solid #c3e6cb;
+                color: #155724;
+            }}
+            
+            .verification.error {{
+                background: #f8d7da;
+                border: 1px solid #f5c6cb;
+                color: #721c24;
+            }}
+            
+            .conclusions {{
+                background: #e7f3ff;
+                padding: 15px;
+                border-radius: 5px;
+                margin: 20px 0;
+            }}
+            
+            .signatures {{
+                margin-top: 40px;
+                page-break-inside: avoid;
+            }}
+            
+            .signature-line {{
+                margin: 20px 0;
+                padding: 10px 0;
+                border-top: 1px solid #ccc;
+            }}
+            
+            .footer {{
+                text-align: center;
+                margin-top: 30px;
+                padding-top: 20px;
+                border-top: 1px solid #ccc;
+                font-size: 10pt;
+                color: #666;
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h1>🏗️ CONSORCIO DEJ</h1>
+            <p><strong>Ingeniería y Construcción</strong></p>
+            <p>Software de Análisis Estructural Profesional</p>
+            <p>Normas: E.060, E.030, ACI 318-2025</p>
+        </div>
+        
+        <div class="section">
+            <h2>📋 INFORMACIÓN DEL PROYECTO</h2>
+            <div class="info-grid">
+                <div class="info-item">
+                    <strong>Fecha:</strong> {datos_proyecto['fecha']}<br>
+                    <strong>Usuario:</strong> {datos_proyecto['usuario']}<br>
+                    <strong>Versión:</strong> 2.0 - Normas E.060 & ACI 318-2025
+                </div>
+                <div class="info-item">
+                    <strong>Proyecto:</strong> Análisis Estructural<br>
+                    <strong>Software:</strong> CONSORCIO DEJ<br>
+                    <strong>Normas:</strong> E.060, E.030, ACI 318-2025
+                </div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>🏗️ MATERIALES</h2>
+            <div class="info-grid">
+                <div class="info-item">
+                    <strong>Resistencia del concreto (f'c):</strong> {datos_proyecto['fc']} kg/cm²<br>
+                    <strong>Esfuerzo de fluencia del acero (fy):</strong> {datos_proyecto['fy']} kg/cm²<br>
+                    <strong>Módulo de elasticidad (Ec):</strong> {datos_proyecto['E']:.0f} kg/cm²
+                </div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>📐 GEOMETRÍA Y CARGAS</h2>
+            <div class="info-grid">
+                <div class="info-item">
+                    <strong>Luz libre de vigas:</strong> {datos_proyecto['L_viga']} m<br>
+                    <strong>Altura de piso:</strong> {datos_proyecto['h_piso']} m<br>
+                    <strong>Número de pisos:</strong> {datos_proyecto['num_pisos']}<br>
+                    <strong>Número de vanos:</strong> {datos_proyecto['num_vanos']}
+                </div>
+                <div class="info-item">
+                    <strong>Carga muerta (CM):</strong> {datos_proyecto['CM']} kg/m²<br>
+                    <strong>Carga viva (CV):</strong> {datos_proyecto['CV']} kg/m²<br>
+                    <strong>Zona sísmica:</strong> {datos_proyecto['zona_sismica']}<br>
+                    <strong>Tipo de suelo:</strong> {datos_proyecto['tipo_suelo']}
+                </div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>🔧 PREDIMENSIONAMIENTO (E.060 Art. 10.2)</h2>
+            <div class="info-grid">
+                <div class="info-item">
+                    <h3>Losas Aligeradas</h3>
+                    <strong>Espesor mínimo:</strong> {resultados_analisis['h_losa']:.0f} cm<br>
+                    <strong>Cuantía mínima de acero:</strong> {resultados_analisis['rho_min_losa']:.4f} (Art. 10.5.1)
+                </div>
+                <div class="info-item">
+                    <h3>Vigas Principales</h3>
+                    <strong>Peralte efectivo:</strong> {resultados_analisis['d_viga']:.0f} cm<br>
+                    <strong>Ancho de viga:</strong> {resultados_analisis['b_viga']:.0f} cm<br>
+                    <strong>Cuantía mínima:</strong> {resultados_analisis['rho_min_viga']:.4f}<br>
+                    <strong>Cuantía máxima:</strong> {resultados_analisis['rho_max_viga']:.4f}
+                </div>
+            </div>
+            <div class="info-item">
+                <h3>Columnas</h3>
+                <strong>Lado de columna:</strong> {resultados_analisis['lado_columna']:.0f} cm<br>
+                <strong>Área de columna:</strong> {resultados_analisis['A_columna']:.0f} cm²<br>
+                <strong>Carga de servicio:</strong> {resultados_analisis['P_servicio']:.1f} ton<br>
+                <strong>Carga mayorada:</strong> {resultados_analisis['P_mayorada']:.1f} ton
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>🌎 ANÁLISIS SÍSMICO (E.030)</h2>
+            <div class="info-grid">
+                <div class="info-item">
+                    <strong>Peso total del edificio:</strong> {resultados_analisis['P_edificio']:.1f} ton<br>
+                    <strong>Período fundamental:</strong> T = {resultados_analisis['T']:.2f} s<br>
+                    <strong>Coeficiente de amplificación:</strong> C = {resultados_analisis['C']:.3f}<br>
+                    <strong>Cortante basal:</strong> V = {resultados_analisis['V']:.1f} ton
+                </div>
+                <div class="info-item">
+                    <strong>Sistema estructural:</strong> {datos_proyecto['tipo_estructura']}<br>
+                    <strong>Factor de importancia:</strong> {datos_proyecto['factor_importancia']}<br>
+                    <strong>Norma aplicada:</strong> E.030 - Diseño Sismorresistente<br>
+                    <strong>Artículo:</strong> 3.2.2 - Coeficiente de Amplificación
+                </div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>🛠️ DISEÑO ESTRUCTURAL (E.060 & ACI 318-2025)</h2>
+            <div class="info-grid">
+                <div class="info-item">
+                    <h3>Vigas - Flexión</h3>
+                    <strong>Momento último:</strong> {resultados_analisis['M_u']:.1f} kgf·m<br>
+                    <strong>Factor de reducción φ:</strong> {resultados_analisis['phi']} (Art. 9.3.2.1)<br>
+                    <strong>Acero requerido:</strong> {resultados_analisis['A_s_corr']:.2f} cm²<br>
+                    <strong>Cuantía provista:</strong> {resultados_analisis['rho_provisto']:.4f}
+                </div>
+                <div class="info-item">
+                    <h3>Vigas - Cortante</h3>
+                    <strong>Cortante último:</strong> {resultados_analisis['V_u']:.1f} kg<br>
+                    <strong>Cortante que resiste el concreto:</strong> {resultados_analisis['V_c']:.1f} kg<br>
+                    <strong>Cortante máximo del acero:</strong> {resultados_analisis['V_s_max']:.1f} kg
+                </div>
+            </div>
+            <div class="info-item">
+                <h3>Columnas - Compresión</h3>
+                <strong>Carga axial mayorada:</strong> {resultados_analisis['P_u']:.1f} ton<br>
+                <strong>Factor de reducción φ:</strong> {resultados_analisis['phi_col']} (Art. 9.3.2.2)<br>
+                <strong>Acero mínimo:</strong> {resultados_analisis['As_min']:.1f} cm² (1% del área bruta)<br>
+                <strong>Acero máximo:</strong> {resultados_analisis['As_max']:.1f} cm² (6% del área bruta)
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>✅ VERIFICACIONES DE SEGURIDAD</h2>
+            <div class="verification {'success' if resultados_analisis['cumple_cuantia'] else 'error'}">
+                <strong>Vigas - Cuantía mínima:</strong> {'✓ CUMPLE' if resultados_analisis['cumple_cuantia'] else '✗ NO CUMPLE'}
+            </div>
+            <div class="verification {'success' if resultados_analisis['rho_provisto'] <= resultados_analisis['rho_max_viga'] else 'error'}">
+                <strong>Vigas - Cuantía máxima:</strong> {'✓ CUMPLE' if resultados_analisis['rho_provisto'] <= resultados_analisis['rho_max_viga'] else '✗ NO CUMPLE'}
+            </div>
+            <div class="verification {'success' if resultados_analisis['cumple_columna'] else 'error'}">
+                <strong>Columnas - Resistencia axial:</strong> {'✓ CUMPLE' if resultados_analisis['cumple_columna'] else '✗ NO CUMPLE'}
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>📋 CONCLUSIONES Y RECOMENDACIONES</h2>
+            <div class="conclusions">
+                <ol>
+                    <li>El predimensionamiento cumple con las especificaciones de la Norma E.060</li>
+                    <li>El análisis sísmico se realizó según la Norma E.030</li>
+                    <li>El diseño estructural sigue los criterios de ACI 318-2025</li>
+                    <li>Se verificaron las cuantías mínimas y máximas de acero</li>
+                    <li>La estructura cumple con los requisitos de seguridad</li>
+                </ol>
+            </div>
+        </div>
+        
+        <div class="signatures">
+            <h2>📝 FIRMAS Y APROBACIONES</h2>
+            <div class="signature-line">
+                <strong>INGENIERO CALCULISTA:</strong> _________________     <strong>FECHA:</strong> {datos_proyecto['fecha']}
+            </div>
+            <div class="signature-line">
+                <strong>INGENIERO REVISOR:</strong> ___________________     <strong>FECHA:</strong> {datos_proyecto['fecha']}
+            </div>
+            <div class="signature-line">
+                <strong>DIRECTOR DE OBRA:</strong> ____________________     <strong>FECHA:</strong> {datos_proyecto['fecha']}
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p><strong>CONSORCIO DEJ - Ingeniería y Construcción</strong></p>
+            <p>Software de Análisis Estructural Profesional</p>
+            <p>Desarrollado con Python, Streamlit y Plotly | Normas: E.060, E.030, ACI 318-2025</p>
+        </div>
+    </body>
+    </html>
+    """
+    
+    # Configurar fuentes
+    font_config = FontConfiguration()
+    
+    # Crear CSS para formato A4
+    css = CSS(string='''
+        @page {
+            size: A4;
+            margin: 2cm;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 11pt;
+            line-height: 1.4;
+        }
+    ''', font_config=font_config)
+    
+    # Generar PDF
+    html = HTML(string=html_content)
+    pdf_buffer = html.write_pdf(stylesheets=[css], font_config=font_config)
+    
+    return pdf_buffer
 
 # Verificar autenticación
 if 'authenticated' not in st.session_state:
@@ -889,26 +1111,20 @@ if st.session_state.authenticated:
                 'cumple_columna': Pn <= P0
             }
             
-            # Generar reporte en texto
-            reporte_completo = generar_reporte_texto(datos_proyecto, resultados_analisis)
+            # Generar reporte en PDF
+            pdf_buffer = generar_pdf_profesional(datos_proyecto, resultados_analisis)
             
-            # Crear botón de descarga como archivo de texto
+            # Crear botón de descarga
             st.download_button(
-                label="📥 DESCARGAR REPORTE PROFESIONAL (.txt)",
-                data=reporte_completo,
-                file_name=f"Reporte_Estructural_CONSORCIO_DEJ_{datetime.now().strftime('%Y%m%d_%H%M')}.txt",
-                mime="text/plain",
+                label="📥 DESCARGAR REPORTE PROFESIONAL (.pdf)",
+                data=pdf_buffer.getvalue(),
+                file_name=f"Reporte_Estructural_CONSORCIO_DEJ_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
+                mime="application/pdf",
                 type="primary",
                 use_container_width=True
             )
             
             st.success("✅ Reporte generado exitosamente. Haz clic en 'DESCARGAR REPORTE PROFESIONAL' para descargarlo.")
-            
-            # Mostrar vista previa del reporte
-            with st.expander("👁️ Vista Previa del Reporte Completo"):
-                st.text_area("📋 Reporte Completo", reporte_completo, height=400)
-            
-            st.info("💡 **Nota:** El reporte se descarga como archivo .txt. Puedes copiarlo y pegarlo en Word para convertirlo a PDF con formato profesional.")
         
         st.balloons()
         st.success("🎉 ¡Análisis estructural completado exitosamente!")
