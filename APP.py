@@ -331,8 +331,8 @@ Generado por: CONSORCIO DEJ
         
         tabla = Table(datos_tabla, colWidths=[200, 100, 80])
         tabla.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.Color(0.7, 0.8, 1.0)),
-            ('GRID', (0, 0), (-1, -1), 1, colors.Color(0, 0, 0)),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.lightblue),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
         ]))
         elements.append(tabla)
@@ -353,8 +353,8 @@ Generado por: CONSORCIO DEJ
             
             tabla_resultados = Table(resultados_tabla, colWidths=[200, 100, 80])
             tabla_resultados.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), colors.Color(0.7, 1.0, 0.7)),
-                ('GRID', (0, 0), (-1, -1), 1, colors.Color(0, 0, 0)),
+                ('BACKGROUND', (0, 0), (-1, 0), colors.lightgreen),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black),
                 ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
             ]))
             elements.append(tabla_resultados)
@@ -1224,17 +1224,25 @@ Plan: Gratuito
             
             with col2:
                 # Generar PDF premium
-                try:
-                    pdf_buffer = generar_pdf_reportlab(resultados, datos_entrada, "premium")
-                    st.download_button(
-                        label="📄 Descargar PDF Premium",
-                        data=pdf_buffer.getvalue(),
-                        file_name=f"reporte_premium_analisis_estructural_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
-                        mime="application/pdf"
-                    )
-                except Exception as e:
-                    st.error(f"⚠️ Error generando PDF: {str(e)}")
-                    st.info("Intenta ejecutar el análisis completo nuevamente")
+                if REPORTLAB_AVAILABLE:
+                    try:
+                        pdf_buffer = generar_pdf_reportlab(resultados, datos_entrada, "premium")
+                        if pdf_buffer:
+                            st.download_button(
+                                label="📄 Descargar PDF Premium",
+                                data=pdf_buffer.getvalue(),
+                                file_name=f"reporte_premium_analisis_estructural_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
+                                mime="application/pdf"
+                            )
+                        else:
+                            st.error("⚠️ Error: No se pudo generar el PDF")
+                    except Exception as e:
+                        st.error(f"⚠️ Error generando PDF: {str(e)}")
+                        st.info("🔧 Instale ReportLab: pip install reportlab")
+                else:
+                    st.error("⚠️ ReportLab no está instalado")
+                    st.info("🔧 Para generar PDFs, instale ReportLab:")
+                    st.code("pip install reportlab")
             
             with col3:
                 if st.button("🖨️ Generar Reporte en Pantalla", type="primary"):
