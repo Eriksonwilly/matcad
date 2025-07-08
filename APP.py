@@ -638,8 +638,8 @@ Generado por: CONSORCIO DEJ
             
             tabla_flexion = Table(flexion_tabla, colWidths=[200, 100, 80])
             tabla_flexion.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), colors.lightcoral),
-                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                ('BACKGROUND', (0, 0), (-1, 0), (240/255, 128/255, 128/255)),  # light coral
+                ('GRID', (0, 0), (-1, -1), 1, (0, 0, 0)),  # black
                 ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
             ]))
             add_element(tabla_flexion)
@@ -657,8 +657,8 @@ Generado por: CONSORCIO DEJ
             
             tabla_cortante = Table(cortante_tabla, colWidths=[200, 100, 80])
             tabla_cortante.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), colors.lightblue),
-                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                ('BACKGROUND', (0, 0), (-1, 0), (173/255, 216/255, 230/255)),  # light blue
+                ('GRID', (0, 0), (-1, -1), 1, (0, 0, 0)),  # black
                 ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
             ]))
             add_element(tabla_cortante)
@@ -675,8 +675,8 @@ Generado por: CONSORCIO DEJ
             
             tabla_columna = Table(columna_tabla, colWidths=[200, 100, 80])
             tabla_columna.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), colors.lightgreen),
-                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                ('BACKGROUND', (0, 0), (-1, 0), (144/255, 238/255, 144/255)),  # light green
+                ('GRID', (0, 0), (-1, -1), 1, (0, 0, 0)),  # black
                 ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
             ]))
             add_element(tabla_columna)
@@ -695,8 +695,8 @@ Generado por: CONSORCIO DEJ
                 
                 tabla_sismico = Table(sismico_tabla, colWidths=[200, 100, 80])
                 tabla_sismico.setStyle(TableStyle([
-                    ('BACKGROUND', (0, 0), (-1, 0), colors.lightyellow),
-                    ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                    ('BACKGROUND', (0, 0), (-1, 0), (255/255, 255/255, 224/255)),  # light yellow
+                    ('GRID', (0, 0), (-1, -1), 1, (0, 0, 0)),  # black
                     ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
                 ]))
                 add_element(tabla_sismico)
@@ -735,8 +735,8 @@ Generado por: CONSORCIO DEJ
         verif_tabla = [["Verificación", "Estado", "Detalle"]] + verificaciones
         tabla_verif = Table(verif_tabla, colWidths=[150, 100, 150])
         tabla_verif.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.lightcoral),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('BACKGROUND', (0, 0), (-1, 0), (240/255, 128/255, 128/255)),  # light coral
+            ('GRID', (0, 0), (-1, -1), 1, (0, 0, 0)),  # black
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
         ]))
         add_element(tabla_verif)
@@ -1885,25 +1885,29 @@ Plan: Gratuito
                 
                 with col2:
                     # Generar PDF premium
-                    if REPORTLAB_AVAILABLE:
-                        try:
-                            pdf_buffer = generar_pdf_reportlab(resultados, datos_entrada, "premium")
-                            if pdf_buffer:
-                                st.download_button(
-                                    label="📄 Descargar PDF Premium",
-                                    data=pdf_buffer.getvalue(),
-                                    file_name=f"reporte_premium_analisis_estructural_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
-                                    mime="application/pdf"
-                                )
-                            else:
-                                st.error("⚠️ Error: No se pudo generar el PDF")
-                        except Exception as e:
-                            st.error(f"⚠️ Error generando PDF: {str(e)}")
-                            st.info("🔧 Instale ReportLab: pip install reportlab")
-                    else:
-                        st.error("⚠️ ReportLab no está instalado")
-                        st.info("🔧 Para generar PDFs, instale ReportLab:")
-                        st.code("pip install reportlab")
+                    if st.button("📄 Generar PDF Premium", type="primary", key="btn_pdf_premium"):
+                        if REPORTLAB_AVAILABLE:
+                            try:
+                                with st.spinner("Generando PDF Premium..."):
+                                    pdf_buffer = generar_pdf_reportlab(resultados, datos_entrada, "premium")
+                                    if pdf_buffer:
+                                        st.success("✅ PDF Premium generado exitosamente")
+                                        st.download_button(
+                                            label="📥 Descargar PDF Premium",
+                                            data=pdf_buffer.getvalue(),
+                                            file_name=f"reporte_premium_analisis_estructural_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
+                                            mime="application/pdf",
+                                            key="download_pdf_premium"
+                                        )
+                                    else:
+                                        st.error("⚠️ Error: No se pudo generar el PDF")
+                            except Exception as e:
+                                st.error(f"⚠️ Error generando PDF: {str(e)}")
+                                st.info("🔧 Instale ReportLab: pip install reportlab")
+                        else:
+                            st.error("⚠️ ReportLab no está instalado")
+                            st.info("🔧 Para generar PDFs, instale ReportLab:")
+                            st.code("pip install reportlab")
                 
                 with col3:
                     if st.button("🖨️ Generar Reporte en Pantalla", type="primary"):
