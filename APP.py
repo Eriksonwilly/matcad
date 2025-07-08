@@ -14,6 +14,8 @@ import os
 try:
     import matplotlib.pyplot as plt
     from matplotlib.patches import Rectangle, Polygon
+    import matplotlib
+    matplotlib.use('Agg')  # Backend no interactivo para Streamlit
     MATPLOTLIB_AVAILABLE = True
 except ImportError:
     MATPLOTLIB_AVAILABLE = False
@@ -339,8 +341,8 @@ Generado por: CONSORCIO DEJ
         
         tabla = Table(datos_tabla, colWidths=[200, 100, 80])
         tabla.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.lightblue),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('BACKGROUND', (0, 0), (-1, 0), (173/255, 216/255, 230/255)),  # light blue
+            ('GRID', (0, 0), (-1, -1), 1, (0, 0, 0)),  # black
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
         ]))
         elements.append(tabla)
@@ -361,8 +363,8 @@ Generado por: CONSORCIO DEJ
             
             tabla_resultados = Table(resultados_tabla, colWidths=[200, 100, 80])
             tabla_resultados.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), colors.lightgreen),
-                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                ('BACKGROUND', (0, 0), (-1, 0), (144/255, 238/255, 144/255)),  # light green
+                ('GRID', (0, 0), (-1, -1), 1, (0, 0, 0)),  # black
                 ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
             ]))
             elements.append(tabla_resultados)
@@ -1837,22 +1839,18 @@ elif opcion == "📈 Gráficos":
                         import matplotlib.pyplot as plt
                         import matplotlib
                         matplotlib.use('Agg')  # Backend no interactivo para Streamlit
-                        
                         fig1, ax1 = plt.subplots(figsize=(8, 6))
                         propiedades = ['Ec', 'Es', 'fr', 'β1']
                         valores = [resultados.get('Ec', 0)/1000, resultados.get('Es', 0)/1000000, 
                                   resultados.get('fr', 0), resultados.get('beta1', 0)]
                         colors = ['#4169E1', '#DC143C', '#32CD32', '#FFD700']
-                        
                         bars = ax1.bar(propiedades, valores, color=colors)
                         ax1.set_title("Propiedades de los Materiales - Plan Premium")
                         ax1.set_ylabel("Valor")
-                        
                         for bar in bars:
                             height = bar.get_height()
                             ax1.text(bar.get_x() + bar.get_width()/2., height + 0.1,
                                    f'{height:.2f}', ha='center', va='bottom')
-                        
                         st.pyplot(fig1)
                     except ImportError:
                         st.info("📊 Gráfico no disponible - Matplotlib no está instalado")
