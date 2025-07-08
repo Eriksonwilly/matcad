@@ -164,7 +164,11 @@ def graficar_cortantes_momentos_nilson(L, w, P=None, a=None, tipo_viga="simple")
     """
     Genera gráficos de cortantes y momentos según Arthur H. Nilson
     """
-    if not MATPLOTLIB_AVAILABLE:
+    try:
+        import matplotlib.pyplot as plt
+        import matplotlib
+        matplotlib.use('Agg')  # Backend no interactivo para Streamlit
+    except ImportError:
         st.error("❌ Matplotlib no está instalado. Instale con: pip install matplotlib")
         return None
     
@@ -210,7 +214,11 @@ def graficar_viga_continua_nilson(L1, L2, w1, w2):
     """
     Genera gráficos de cortantes y momentos para viga continua
     """
-    if not MATPLOTLIB_AVAILABLE:
+    try:
+        import matplotlib.pyplot as plt
+        import matplotlib
+        matplotlib.use('Agg')  # Backend no interactivo para Streamlit
+    except ImportError:
         st.error("❌ Matplotlib no está instalado. Instale con: pip install matplotlib")
         return None
     
@@ -403,6 +411,151 @@ def calcular_predimensionamiento(L_viga, num_pisos, num_vanos, CM, CV, fc, fy):
     A_columna = max(A_col_servicio, A_col_resistencia)
     lado_columna = sqrt(A_columna)
     return {'h_losa': h_losa, 'd_viga': d_viga, 'b_viga': b_viga, 'lado_columna': lado_columna, 'A_columna': A_columna}
+
+def calcular_diseno_flexion(fc, fy, b, d, Mu):
+    """
+    Calcula el diseño por flexión según ACI 318-2025
+    """
+    # Calcular β1
+    if fc <= 280:
+        beta1 = 0.85
+    else:
+        beta1 = 0.85 - 0.05 * ((fc - 280) / 70)
+        beta1 = max(beta1, 0.65)
+    
+    # Cuantía balanceada
+    rho_b = 0.85 * beta1 * (fc / fy) * (6000 / (6000 + fy))
+    
+    # Cuantía mínima
+    rho_min = max(0.8 * sqrt(fc) / fy, 14 / fy)
+    
+    # Cuantía máxima
+    rho_max = 0.75 * rho_b
+    
+    # Asumir cuantía inicial (entre mínima y máxima)
+    rho = (rho_min + rho_max) / 2
+    
+    # Calcular área de acero
+    As = rho * b * d
+    
+    # Calcular profundidad del bloque equivalente
+    a = As * fy / (0.85 * fc * b)
+    
+    # Calcular momento resistente
+    Mn = As * fy * (d - a/2)
+    phi = 0.9
+    phiMn = phi * Mn
+    
+    return {
+        'beta1': beta1,
+        'rho_b': rho_b,
+        'rho_min': rho_min,
+        'rho_max': rho_max,
+        'rho': rho,
+        'As': As,
+        'a': a,
+        'Mn': Mn,
+        'phiMn': phiMn,
+        'verificacion': phiMn >= Mu
+    }
+
+def calcular_diseno_cortante(fc, fy, bw, d, Vu):
+    """
+    Calcula el diseño por cortante según ACI 318-2025
+    """
+    # Resistencia del concreto
+    Vc = 0.53 * sqrt(fc) * bw * d
+    
+    # Factor phi para cortante
+    phi = 0.75
+    
+    # Verificar si se necesita refuerzo
+    if Vu <= phi * Vc:
+        Vs_requerido = 0
+        Av_s_requerido = 0
+        s_max = d/2
+    else:
+        Vs_requerido = (Vu / phi) - Vc
+        # Calcular área de estribos requerida (asumiendo estribos #3)
+        Av = 0.71  # cm² para estribo #3
+        s_requerido = Av * fy * d / Vs_requerido
+        s_max = min(d/2, 60)  # cm
+        
+        if s_requerido > s_max:
+            # Usar estribos más grandes o más separados
+            Av_s_requerido = Vs_requerido / (fy * d)
+        else:
+            Av_s_requerido = Av / s_requerido
+    
+    return {
+        'Vc': Vc,
+        'Vs_requerido': Vs_requerido,
+        'Av_s_requerido': Av_s_requerido,
+        's_max': s_max,
+        'phi': phi,
+        'verificacion': Vu <= phi * (Vc + Vs_requerido) if Vs_requerido > 0 else Vu <= phi * Vc
+    }
+
+def calcular_diseno_columna(fc, fy, Ag, Ast, Pu):
+    """
+    Calcula el diseño de columna según ACI 318-2025
+    """
+    # Resistencia nominal
+    Pn = 0.80 * (0.85 * fc * (Ag - Ast) + fy * Ast)
+    
+    # Factor phi para columnas con estribos
+    phi = 0.65
+    
+    # Resistencia de diseño
+    phiPn = phi * Pn
+    
+    return {
+        'Pn': Pn,
+        'phiPn': phiPn,
+        'phi': phi,
+        'verificacion': Pu <= phiPn
+    }
+
+def calcular_analisis_sismico(zona_sismica, tipo_suelo, factor_importancia, peso_total):
+    """
+    Calcula análisis sísmico básico según E.030
+    """
+    # Factores según zona sísmica
+    factores_zona = {
+        "Z1": 0.10,
+        "Z2": 0.15, 
+        "Z3": 0.25,
+        "Z4": 0.35
+    }
+    
+    # Factores según tipo de suelo
+    factores_suelo = {
+        "S1": 0.8,
+        "S2": 1.0,
+        "S3": 1.2,
+        "S4": 1.4
+    }
+    
+    Z = factores_zona.get(zona_sismica, 0.25)
+    S = factores_suelo.get(tipo_suelo, 1.0)
+    U = factor_importancia
+    
+    # Coeficiente sísmico simplificado
+    C = 2.5  # Valor típico para estructuras regulares
+    R = 7.0  # Factor de reducción para pórticos
+    
+    # Cortante basal
+    V = (Z * U * C * S / R) * peso_total * 1000  # Convertir a kg
+    
+    return {
+        'Z': Z,
+        'S': S,
+        'U': U,
+        'C': C,
+        'R': R,
+        'V': V,
+        'cortante_basal_ton': V / 1000
+    }
 
 # =====================
 # INTERFAZ STREAMLIT
@@ -960,6 +1113,28 @@ elif opcion == "📊 Análisis Completo":
             # Calcular peso total
             peso_total = float(num_pisos) * float(L_viga) * float(num_vanos) * float(h_piso) * float(f_c) / 1000
             
+            # CÁLCULOS DE DISEÑO ESTRUCTURAL SEGÚN ACI 318-2025
+            
+            # 1. Diseño por Flexión
+            # Momento último estimado para viga típica
+            Mu_estimado = (1.2 * CM + 1.6 * CV) * L_viga**2 / 8 * 1000  # kg·m
+            diseno_flexion = calcular_diseno_flexion(f_c, f_y, predim['b_viga'], predim['d_viga'], Mu_estimado)
+            
+            # 2. Diseño por Cortante
+            # Cortante último estimado
+            Vu_estimado = (1.2 * CM + 1.6 * CV) * L_viga / 2 * 1000  # kg
+            diseno_cortante = calcular_diseno_cortante(f_c, f_y, predim['b_viga'], predim['d_viga'], Vu_estimado)
+            
+            # 3. Diseño de Columna
+            # Carga axial última estimada
+            Pu_estimado = peso_total * 1000 / num_vanos  # kg por columna
+            Ag_columna = predim['lado_columna']**2  # cm²
+            Ast_columna = 0.01 * Ag_columna  # 1% de acero inicial
+            diseno_columna = calcular_diseno_columna(f_c, f_y, Ag_columna, Ast_columna, Pu_estimado)
+            
+            # 4. Análisis Sísmico
+            analisis_sismico = calcular_analisis_sismico(zona_sismica, tipo_suelo, factor_importancia, peso_total)
+            
             # Guardar resultados completos
             resultados_completos = {
                 'peso_total': peso_total,
@@ -972,7 +1147,15 @@ elif opcion == "📊 Análisis Completo":
                 'ecu': props_concreto['ecu'],
                 'fr': props_concreto['fr'],
                 'beta1': props_concreto['beta1'],
-                'ey': props_acero['ey']
+                'ey': props_acero['ey'],
+                # Resultados de diseño estructural
+                'diseno_flexion': diseno_flexion,
+                'diseno_cortante': diseno_cortante,
+                'diseno_columna': diseno_columna,
+                'analisis_sismico': analisis_sismico,
+                'Mu_estimado': Mu_estimado,
+                'Vu_estimado': Vu_estimado,
+                'Pu_estimado': Pu_estimado
             }
             
             # Guardar datos de entrada
@@ -1028,6 +1211,71 @@ elif opcion == "📊 Análisis Completo":
                 st.success(f"✅ Módulo de elasticidad del concreto adecuado: {props_concreto['Ec']:.0f} kg/cm²")
             else:
                 st.info(f"ℹ️ Módulo de elasticidad del concreto: {props_concreto['Ec']:.0f} kg/cm²")
+            
+            # RESULTADOS DE DISEÑO ESTRUCTURAL SEGÚN ACI 318-2025
+            st.subheader("🏗️ Resultados de Diseño Estructural (ACI 318-2025)")
+            
+            # Pestañas para diferentes tipos de diseño
+            tab1, tab2, tab3, tab4 = st.tabs(["📐 Flexión", "🔧 Cortante", "🏢 Columnas", "🌍 Sísmico"])
+            
+            with tab1:
+                st.markdown("### 📐 Diseño por Flexión")
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.metric("Momento Último (Mu)", f"{resultados_completos['Mu_estimado']:.0f} kg·m")
+                    st.metric("Cuantía Balanceada (ρb)", f"{diseno_flexion['rho_b']:.4f}")
+                    st.metric("Cuantía Mínima (ρmin)", f"{diseno_flexion['rho_min']:.4f}")
+                    st.metric("Cuantía Máxima (ρmax)", f"{diseno_flexion['rho_max']:.4f}")
+                with col2:
+                    st.metric("Área de Acero (As)", f"{diseno_flexion['As']:.1f} cm²")
+                    st.metric("Profundidad Bloque (a)", f"{diseno_flexion['a']:.1f} cm")
+                    st.metric("Momento Resistente (φMn)", f"{diseno_flexion['phiMn']:.0f} kg·m")
+                    if diseno_flexion['verificacion']:
+                        st.success("✅ Verificación de flexión: CUMPLE")
+                    else:
+                        st.error("❌ Verificación de flexión: NO CUMPLE")
+            
+            with tab2:
+                st.markdown("### 🔧 Diseño por Cortante")
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.metric("Cortante Último (Vu)", f"{resultados_completos['Vu_estimado']:.0f} kg")
+                    st.metric("Resistencia Concreto (Vc)", f"{diseno_cortante['Vc']:.0f} kg")
+                    st.metric("Resistencia Acero (Vs)", f"{diseno_cortante['Vs_requerido']:.0f} kg")
+                with col2:
+                    st.metric("Área Estribos (Av/s)", f"{diseno_cortante['Av_s_requerido']:.3f} cm²/cm")
+                    st.metric("Separación Máxima", f"{diseno_cortante['s_max']:.1f} cm")
+                    if diseno_cortante['verificacion']:
+                        st.success("✅ Verificación de cortante: CUMPLE")
+                    else:
+                        st.error("❌ Verificación de cortante: NO CUMPLE")
+            
+            with tab3:
+                st.markdown("### 🏢 Diseño de Columnas")
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.metric("Carga Axial Última (Pu)", f"{resultados_completos['Pu_estimado']:.0f} kg")
+                    st.metric("Resistencia Nominal (Pn)", f"{diseno_columna['Pn']:.0f} kg")
+                    st.metric("Resistencia Diseño (φPn)", f"{diseno_columna['phiPn']:.0f} kg")
+                with col2:
+                    st.metric("Área Total Columna", f"{Ag_columna:.0f} cm²")
+                    st.metric("Área Acero Columna", f"{Ast_columna:.1f} cm²")
+                    if diseno_columna['verificacion']:
+                        st.success("✅ Verificación de columna: CUMPLE")
+                    else:
+                        st.error("❌ Verificación de columna: NO CUMPLE")
+            
+            with tab4:
+                st.markdown("### 🌍 Análisis Sísmico (E.030)")
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.metric("Factor Zona (Z)", f"{analisis_sismico['Z']:.2f}")
+                    st.metric("Factor Suelo (S)", f"{analisis_sismico['S']:.1f}")
+                    st.metric("Factor Importancia (U)", f"{analisis_sismico['U']:.1f}")
+                with col2:
+                    st.metric("Coeficiente Sísmico (C)", f"{analisis_sismico['C']:.1f}")
+                    st.metric("Factor Reducción (R)", f"{analisis_sismico['R']:.1f}")
+                    st.metric("Cortante Basal (V)", f"{analisis_sismico['cortante_basal_ton']:.1f} ton")
             
             # Gráfico de resultados
             if PLOTLY_AVAILABLE:
@@ -1583,28 +1831,32 @@ elif opcion == "📈 Gráficos":
                         
                         fig1.update_traces(texttemplate='%{y:.2f}', textposition='outside')
                         st.plotly_chart(fig1, use_container_width=True)
-                    else:
-                        # Gráfico alternativo con matplotlib
-                        if MATPLOTLIB_AVAILABLE:
-                            fig1, ax1 = plt.subplots(figsize=(8, 6))
-                            propiedades = ['Ec', 'Es', 'fr', 'β1']
-                            valores = [resultados.get('Ec', 0)/1000, resultados.get('Es', 0)/1000000, 
-                                      resultados.get('fr', 0), resultados.get('beta1', 0)]
-                            colors = ['#4169E1', '#DC143C', '#32CD32', '#FFD700']
-                            
-                            bars = ax1.bar(propiedades, valores, color=colors)
-                            ax1.set_title("Propiedades de los Materiales - Plan Premium")
-                            ax1.set_ylabel("Valor")
-                            
-                            for bar in bars:
-                                height = bar.get_height()
-                                ax1.text(bar.get_x() + bar.get_width()/2., height + 0.1,
-                                       f'{height:.2f}', ha='center', va='bottom')
-                            
-                            st.pyplot(fig1)
-                        else:
-                            st.info("📊 Gráfico no disponible - Matplotlib no está instalado")
-                            st.write("Para ver gráficos, instale matplotlib: `pip install matplotlib`")
+                else:
+                    # Gráfico alternativo con matplotlib
+                    try:
+                        import matplotlib.pyplot as plt
+                        import matplotlib
+                        matplotlib.use('Agg')  # Backend no interactivo para Streamlit
+                        
+                        fig1, ax1 = plt.subplots(figsize=(8, 6))
+                        propiedades = ['Ec', 'Es', 'fr', 'β1']
+                        valores = [resultados.get('Ec', 0)/1000, resultados.get('Es', 0)/1000000, 
+                                  resultados.get('fr', 0), resultados.get('beta1', 0)]
+                        colors = ['#4169E1', '#DC143C', '#32CD32', '#FFD700']
+                        
+                        bars = ax1.bar(propiedades, valores, color=colors)
+                        ax1.set_title("Propiedades de los Materiales - Plan Premium")
+                        ax1.set_ylabel("Valor")
+                        
+                        for bar in bars:
+                            height = bar.get_height()
+                            ax1.text(bar.get_x() + bar.get_width()/2., height + 0.1,
+                                   f'{height:.2f}', ha='center', va='bottom')
+                        
+                        st.pyplot(fig1)
+                    except ImportError:
+                        st.info("📊 Gráfico no disponible - Matplotlib no está instalado")
+                        st.write("Para ver gráficos, instale matplotlib: `pip install matplotlib`")
                 
                 with col2:
                     # Gráfico de dimensiones
