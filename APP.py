@@ -12,10 +12,11 @@ import os
 
 # Importaciones opcionales con manejo de errores
 try:
+    import matplotlib
+    # Configurar backend antes de importar pyplot
+    matplotlib.use('Agg')  # Backend no interactivo para Streamlit
     import matplotlib.pyplot as plt
     from matplotlib.patches import Rectangle, Polygon
-    import matplotlib
-    matplotlib.use('Agg')  # Backend no interactivo para Streamlit
     MATPLOTLIB_AVAILABLE = True
 except ImportError:
     MATPLOTLIB_AVAILABLE = False
@@ -1904,12 +1905,11 @@ Plan: Gratuito
                             with st.spinner("Generando PDF Premium..."):
                                 pdf_buffer = generar_pdf_reportlab(resultados, datos_entrada, "premium")
                                 if pdf_buffer:
-                                    st.success("✅ PDF Premium generado exitosamente")
-                                    # Guardar en session state
+                                    # Eliminar st.rerun() y usar directamente el botón de descarga
                                     st.session_state['pdf_ready'] = True
                                     st.session_state['pdf_data'] = pdf_buffer.getvalue()
                                     st.session_state['pdf_filename'] = f"reporte_premium_analisis_estructural_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf"
-                                    st.rerun()
+                                    st.success("✅ PDF Premium generado exitosamente")
                                 else:
                                     st.error("⚠️ Error: No se pudo generar el PDF")
                         except Exception as e:
