@@ -5,35 +5,37 @@ import numpy as np
 import pandas as pd
 from datetime import datetime
 import hashlib
-import matplotlib
-try:
-    matplotlib.use('Agg')  # Backend no interactivo para Streamlit
-    import matplotlib.pyplot as plt
-    from matplotlib.patches import Rectangle, Polygon
-    MATPLOTLIB_AVAILABLE = True
-except ImportError:
-    MATPLOTLIB_AVAILABLE = False
 import io
 import tempfile
 import os
 
-# Importar sistema de pagos simple
-try:
-    from simple_payment_system import payment_system
-    PAYMENT_SYSTEM_AVAILABLE = True
-except ImportError:
-    PAYMENT_SYSTEM_AVAILABLE = False
-    st.warning("⚠️ Sistema de pagos no disponible. Usando modo demo.")
+# =====================
+# VERIFICACIÓN UNIFICADA DE DEPENDENCIAS
+# =====================
 
-# Importaciones opcionales con manejo de errores
+# Verificación de matplotlib (una sola vez)
+try:
+    import matplotlib
+    matplotlib.use('Agg')  # Backend no interactivo para Streamlit
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import Rectangle, Polygon
+    MATPLOTLIB_AVAILABLE = True
+    print("✅ Matplotlib disponible y configurado correctamente")
+except ImportError:
+    MATPLOTLIB_AVAILABLE = False
+    print("❌ Matplotlib no está disponible")
+
+# Verificación de plotly
 try:
     import plotly.express as px
     import plotly.graph_objects as go
     PLOTLY_AVAILABLE = True
 except ImportError:
     PLOTLY_AVAILABLE = False
-    st.warning("⚠️ Plotly no está instalado. Los gráficos interactivos no estarán disponibles.")
+    if MATPLOTLIB_AVAILABLE:
+        st.warning("⚠️ Plotly no está instalado. Los gráficos interactivos no estarán disponibles.")
 
+# Verificación de reportlab
 try:
     from reportlab.lib.pagesizes import A4, letter
     from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak, Image
@@ -44,6 +46,14 @@ try:
 except ImportError:
     REPORTLAB_AVAILABLE = False
     st.warning("⚠️ ReportLab no está instalado. La generación de PDFs no estará disponible.")
+
+# Importar sistema de pagos simple
+try:
+    from simple_payment_system import payment_system
+    PAYMENT_SYSTEM_AVAILABLE = True
+except ImportError:
+    PAYMENT_SYSTEM_AVAILABLE = False
+    st.warning("⚠️ Sistema de pagos no disponible. Usando modo demo.")
 
 # =====================
 # FUNCIONES PARA GRÁFICOS DE CORTANTES Y MOMENTOS (ARTHUR H. NILSON)
@@ -166,11 +176,7 @@ def graficar_cortantes_momentos_nilson(L, w, P=None, a=None, tipo_viga="simple")
     """
     Genera gráficos de cortantes y momentos según Arthur H. Nilson
     """
-    try:
-        import matplotlib.pyplot as plt
-        import matplotlib
-        matplotlib.use('Agg')  # Backend no interactivo para Streamlit
-    except ImportError:
+    if not MATPLOTLIB_AVAILABLE:
         st.error("❌ Matplotlib no está instalado. Instale con: pip install matplotlib")
         return None
     
@@ -216,11 +222,7 @@ def graficar_viga_continua_nilson(L1, L2, w1, w2):
     """
     Genera gráficos de cortantes y momentos para viga continua
     """
-    try:
-        import matplotlib.pyplot as plt
-        import matplotlib
-        matplotlib.use('Agg')  # Backend no interactivo para Streamlit
-    except ImportError:
+    if not MATPLOTLIB_AVAILABLE:
         st.error("❌ Matplotlib no está instalado. Instale con: pip install matplotlib")
         return None
     
@@ -383,6 +385,10 @@ def graficar_cortantes_momentos_mccormac(L, w, P=None, a=None, tipo_viga="simple
     """
     Genera gráficos de cortantes y momentos según Jack C. McCormac
     """
+    if not MATPLOTLIB_AVAILABLE:
+        st.error("❌ Matplotlib no está instalado. Instale con: pip install matplotlib")
+        return None
+    
     try:
         if tipo_viga == "simple":
             x, V, M = calcular_cortantes_momentos_viga_simple_mccormac(L, w, P, a)
@@ -430,6 +436,10 @@ def graficar_viga_continua_mccormac(L1, L2, w1, w2):
     """
     Genera gráficos de cortantes y momentos para viga continua según McCormac
     """
+    if not MATPLOTLIB_AVAILABLE:
+        st.error("❌ Matplotlib no está instalado. Instale con: pip install matplotlib")
+        return None
+    
     try:
         x1, V1, M1, x2, V2, M2, R_A, R_B1, R_B2, R_C, M_B = calcular_cortantes_momentos_viga_continua_mccormac(L1, L2, w1, w2)
         
@@ -2463,14 +2473,8 @@ Plan: Gratuito
             st.subheader("🔧 Diagramas de Cortantes y Momentos - Jack C. McCormac")
             st.info("📚 Basado en 'Diseño de Estructuras de Concreto' de Jack C. McCormac")
             
-            # Verificar si matplotlib está disponible
-            try:
-                import matplotlib.pyplot as plt
-                import matplotlib
-                matplotlib.use('Agg')  # Backend no interactivo para Streamlit
-                MATPLOTLIB_AVAILABLE = True
-            except ImportError:
-                MATPLOTLIB_AVAILABLE = False
+            # Verificar si matplotlib está disponible usando la variable global
+            if not MATPLOTLIB_AVAILABLE:
                 st.error("❌ Matplotlib no está instalado. Para usar esta función, instale matplotlib:")
                 st.code("pip install matplotlib")
                 st.info("🔧 Después de instalar matplotlib, recarga la aplicación")
