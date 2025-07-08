@@ -616,48 +616,133 @@ CONSORCIO DEJ\nIngeniería y Construcción\nReporte de Análisis Estructural - {
     elements.append(tabla_indice)
     elements.append(PageBreak())
 
+    # Tabla de Figuras
+    elements.append(Paragraph("<b>TABLA DE FIGURAS</b>", styleH))
+    figuras = [
+        ["Figura 1", "Definición de Zona Sísmica", "12"],
+        ["Figura 2", "Definición de Tipo de Suelo y sus Parámetros", "12"],
+        ["Figura 3", "Categoría de Edificación y Factor de Uso", "12"],
+        ["Figura 4", "Definición del Concreto", "14"],
+        ["Figura 5", "Definición del Acero", "14"],
+        ["Figura 6", "Dimensiones del Elemento Estructural Viga", "15"],
+        ["Figura 7", "Dimensiones del Elemento Estructural Columna", "15"],
+        ["Figura 8", "Dimensiones del Elemento Estructural Losa Aligerada", "16"],
+        ["Figura 9", "Planta Típica de la Edificación", "17"],
+        ["Figura 10", "Vista en 3D de la Edificación", "18"],
+        ["Figura 11", "Asignación de la Carga Viva en Losas", "18"],
+        ["Figura 12", "Vista de las Losas con la Asignación de la Carga Viva", "19"],
+        ["Figura 13", "Asignación de la Carga Muerta en Losas", "19"],
+        ["Figura 14", "Vista de las Losas con la Asignación de la Carga Muerta", "20"],
+        ["Figura 15", "Asignación de la Carga Viva de Techo en Losas", "21"],
+        ["Figura 16", "Vista de las Losas con Asignación de Carga Viva de Techo", "21"],
+        ["Figura 17", "Asignación de Carga Muerta por Peso de Tabiquería", "23"],
+        ["Figura 18", "Asignación de los Brazos Rígidos en las Uniones Viga – Columna", "23"],
+        ["Figura 19", "Asignación de los Diafragmas Rígidos por Niveles", "24"],
+        ["Figura 20", "Patrones de Carga", "25"],
+        ["Figura 21", "Definición del Sismo Estático X", "25"],
+        ["Figura 22", "Definición del Sismo Estático Y", "25"],
+        ["Figura 23", "Espectro de Respuesta RNE E030", "28"],
+        ["Figura 24", "Definición del Caso Modal", "29"],
+        ["Figura 25", "Primer Modo Fundamental (Traslacional X = 0.327 seg)", "32"],
+        ["Figura 26", "Segundo Modo Fundamental (Traslacional Y = 0.168 seg)", "33"],
+        ["Figura 27", "Tercer Modo Fundamental (Torsional Z = 0.163 seg)", "34"],
+        ["Figura 28", "Gráfico de Derivas de Entre Piso eje X", "38"],
+        ["Figura 29", "Gráfico de Derivas de Entre Piso eje Y", "39"],
+        ["Figura 30", "Gráfico de Desplazamientos SdinX en el eje X", "39"],
+        ["Figura 31", "Gráfico de Desplazamientos SdinY en el eje Y", "40"],
+        ["Figura 32", "Diagrama de Fuerza Cortante para una Envolvente Elevación A y D", "47"],
+        ["Figura 33", "Diagrama de Momento Flector para una Envolvente Elevación A y D", "47"],
+        ["Figura 34", "Diagrama de Fuerza Cortante para una Envolvente Elevación B y C", "52"],
+        ["Figura 35", "Diagrama de Momento Flector para una Envolvente Elevación B y C", "53"],
+        ["Figura 36", "Plano en Planta de las Cimentaciones", "76"],
+        ["Figura 37", "Detalle General del Armazón Estructural en la Edificación", "77"]
+    ]
+    tabla_figuras = Table(figuras, colWidths=[80, 300, 50])
+    tabla_figuras.setStyle(TableStyle([
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('ALIGN', (2, 0), (2, -1), 'RIGHT'),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+    ]))
+    elements.append(tabla_figuras)
+    elements.append(PageBreak())
+
     # 1. Introducción
     elements.append(Paragraph("1. INTRODUCCIÓN", styleH))
-    elements.append(Paragraph("Este reporte presenta el análisis y diseño estructural de un edificio de concreto armado, siguiendo la normativa peruana RNE E.060 y E.030, y referencias internacionales como ACI 318.", styleN))
+    elements.append(Paragraph("Este reporte presenta el análisis y diseño estructural completo de un edificio de concreto armado, siguiendo la normativa peruana RNE E.060 (Concreto Armado) y E.030 (Diseño Sismorresistente), así como referencias internacionales como ACI 318-19. El análisis incluye modelamiento estructural, análisis sísmico estático y dinámico, diseño de elementos estructurales y verificaciones de seguridad.", styleN))
     elements.append(Spacer(1, 10))
     elements.append(PageBreak())
 
     # 2. Objetivos
     elements.append(Paragraph("2. OBJETIVOS", styleH))
-    elements.append(Paragraph("- Presentar el proceso de análisis estructural completo.\n- Mostrar resultados de diseño y verificaciones.\n- Proveer un formato profesional para tesis o informes técnicos.", styleN))
+    elements.append(Paragraph("• Presentar el proceso completo de análisis estructural desde el modelamiento hasta el diseño final.\n• Realizar análisis sísmico estático y dinámico según RNE E.030.\n• Diseñar elementos estructurales (vigas, columnas, zapatas) según RNE E.060.\n• Verificar la seguridad estructural y cumplimiento de normativas.\n• Generar documentación técnica profesional para tesis o informes técnicos.\n• Proporcionar gráficos y diagramas de fuerzas internas para validación.", styleN))
     elements.append(Spacer(1, 10))
     elements.append(PageBreak())
 
     # 3. Normativa a Utilizar
     elements.append(Paragraph("3. NORMATIVA A UTILIZAR", styleH))
-    elements.append(Paragraph("- RNE E.060: Concreto Armado\n- RNE E.030: Diseño Sismorresistente\n- ACI 318-19\n- Referencias bibliográficas de McCormac, Nilson, Hibbeler, Antonio Blanco", styleN))
+    elements.append(Paragraph("• RNE E.060: Norma de Concreto Armado (2019)\n• RNE E.030: Norma de Diseño Sismorresistente (2018)\n• ACI 318-19: Building Code Requirements for Structural Concrete\n• Referencias bibliográficas:\n  - McCormac, J.C. - Diseño de Estructuras de Concreto\n  - Nilson, A.H. - Diseño de Estructuras de Concreto\n  - Hibbeler, R.C. - Análisis Estructural\n  - Blanco Blasco, A. - Estructuras de Concreto Armado", styleN))
     elements.append(Spacer(1, 10))
     elements.append(PageBreak())
 
-    # 4. Parámetros Sísmicos
-    elements.append(Paragraph("4. PARÁMETROS SÍSMICOS", styleH))
+    # 4. Software a Utilizar
+    elements.append(Paragraph("4. SOFTWARE A UTILIZAR", styleH))
+    elements.append(Paragraph("• CONSORCIO DEJ - Aplicación de Análisis Estructural (Streamlit + Python)\n• Bibliotecas de cálculo: NumPy, Pandas, Matplotlib\n• Generación de reportes: ReportLab\n• Visualización: Plotly, Matplotlib\n• Análisis estructural: Cálculos manuales según normativas\n• Validación: Comparación con software comerciales (ETABS, SAP2000)", styleN))
+    elements.append(Spacer(1, 10))
+    elements.append(PageBreak())
+
+    # 5. Parámetros Sísmicos
+    elements.append(Paragraph("5. PARÁMETROS SÍSMICOS", styleH))
+    elements.append(Paragraph("5.1 Factor de Zona (Z)", styleH2))
+    elements.append(Paragraph("Según RNE E.030, el factor de zona sísmica se define según la ubicación geográfica del proyecto. Los valores típicos son: Z1=0.10, Z2=0.15, Z3=0.25, Z4=0.35.", styleN))
+    elements.append(Spacer(1, 5))
+    
+    elements.append(Paragraph("5.2 Categoría de las Edificaciones y Factor de Uso (U)", styleH2))
+    elements.append(Paragraph("El factor de uso depende de la categoría de la edificación: Categoría A (U=1.0), Categoría B (U=1.2), Categoría C (U=1.5).", styleN))
+    elements.append(Spacer(1, 5))
+    
+    elements.append(Paragraph("5.3 Condiciones Geotécnicas, Factor de Suelo (S)", styleH2))
+    elements.append(Paragraph("Según el perfil de suelo: S1=0.8 (suelo rígido), S2=1.0 (suelo intermedio), S3=1.2 (suelo flexible), S4=1.4 (suelo muy flexible).", styleN))
+    elements.append(Spacer(1, 5))
+    
+    elements.append(Paragraph("5.4 Coeficiente de Amplificación Sísmica (C)", styleH2))
+    elements.append(Paragraph("Se calcula según el período fundamental de la estructura y los parámetros del suelo. Valores típicos entre 1.5 y 2.5.", styleN))
+    elements.append(Spacer(1, 5))
+    
+    elements.append(Paragraph("5.5 Sistemas Estructurales y Coeficiente Básico de Reducción (R0)", styleH2))
+    elements.append(Paragraph("Depende del sistema estructural: Pórticos (R0=8), Muros (R0=6), Dual (R0=7).", styleN))
+    elements.append(Spacer(1, 5))
+    
+    elements.append(Paragraph("5.6 Aceleración Espectral", styleH2))
+    elements.append(Paragraph("Se calcula como: Sa = Z·U·C·S·g/R, donde g es la aceleración de la gravedad.", styleN))
+    elements.append(Spacer(1, 5))
+    
+    elements.append(Paragraph("5.7 Límites para la distorsión de entrepiso", styleH2))
+    elements.append(Paragraph("Según RNE E.030: Δ/h ≤ 0.007 para estructuras regulares.", styleN))
+    elements.append(Spacer(1, 10))
+    
     if resultados and 'analisis_sismico' in resultados:
         sismico = resultados['analisis_sismico']
         tabla_sismico = [
-            ["Zona Sísmica (Z)", sismico.get('Z', '')],
-            ["Factor de Uso (U)", sismico.get('U', '')],
-            ["Factor de Suelo (S)", sismico.get('S', '')],
-            ["Coef. Amplificación (C)", sismico.get('C', '')],
-            ["Reducción (R)", sismico.get('R', '')],
-            ["Cortante Basal (V)", f"{sismico.get('cortante_basal_ton', 0):.2f} ton"]
+            ["Parámetro", "Valor", "Descripción"],
+            ["Zona Sísmica (Z)", f"{sismico.get('Z', 0):.2f}", "Factor de zona según ubicación"],
+            ["Factor de Uso (U)", f"{sismico.get('U', 0):.1f}", "Según categoría de edificación"],
+            ["Factor de Suelo (S)", f"{sismico.get('S', 0):.1f}", "Según perfil geotécnico"],
+            ["Coef. Amplificación (C)", f"{sismico.get('C', 0):.1f}", "Según período fundamental"],
+            ["Reducción (R)", f"{sismico.get('R', 0):.1f}", "Según sistema estructural"],
+            ["Cortante Basal (V)", f"{sismico.get('cortante_basal_ton', 0):.2f} ton", "Fuerza sísmica total"]
         ]
-        tabla = Table(tabla_sismico, colWidths=[250, 100])
+        tabla = Table(tabla_sismico, colWidths=[200, 80, 200])
         tabla.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.lightblue),
             ('GRID', (0, 0), (-1, -1), 1, colors.black),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
         ]))
         elements.append(tabla)
-    elements.append(Spacer(1, 10))
     elements.append(PageBreak())
 
-    # 5. Datos de Entrada
-    elements.append(Paragraph("5. DATOS DE ENTRADA", styleH))
+    # 6. Datos de Entrada
+    elements.append(Paragraph("6. DATOS DE ENTRADA", styleH))
     datos_tabla = [
         ["Parámetro", "Valor", "Unidad"],
         ["Resistencia del concreto (f'c)", f"{datos_entrada.get('f_c', 0)}", "kg/cm²"],
@@ -680,8 +765,8 @@ CONSORCIO DEJ\nIngeniería y Construcción\nReporte de Análisis Estructural - {
     elements.append(Spacer(1, 10))
     elements.append(PageBreak())
 
-    # 6. Propiedades de los Materiales
-    elements.append(Paragraph("6. PROPIEDADES DE LOS MATERIALES", styleH))
+    # 7. Propiedades de los Materiales
+    elements.append(Paragraph("7. PROPIEDADES DE LOS MATERIALES", styleH))
     if resultados:
         props_tabla = [
             ["Propiedad", "Valor", "Unidad"],
@@ -702,8 +787,8 @@ CONSORCIO DEJ\nIngeniería y Construcción\nReporte de Análisis Estructural - {
     elements.append(Spacer(1, 10))
     elements.append(PageBreak())
 
-    # 7. Predimensionamiento
-    elements.append(Paragraph("7. PREDIMENSIONAMIENTO", styleH))
+    # 8. Predimensionamiento
+    elements.append(Paragraph("8. PREDIMENSIONAMIENTO", styleH))
     if resultados:
         dim_tabla = [
             ["Dimensión", "Valor", "Unidad"],
@@ -722,8 +807,8 @@ CONSORCIO DEJ\nIngeniería y Construcción\nReporte de Análisis Estructural - {
     elements.append(Spacer(1, 10))
     elements.append(PageBreak())
 
-    # 8. Resultados de Diseño
-    elements.append(Paragraph("8. RESULTADOS DE DISEÑO ESTRUCTURAL", styleH))
+    # 9. Resultados de Diseño
+    elements.append(Paragraph("9. RESULTADOS DE DISEÑO ESTRUCTURAL", styleH))
     # Gráfico de cortantes y momentos (si hay datos)
     try:
         from reportlab.platypus import Image as RLImage
