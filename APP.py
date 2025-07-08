@@ -1020,6 +1020,7 @@ opcion = "🏗️ Cálculo Básico"
 
 if not st.session_state['logged_in']:
     show_auth_page()
+    st.stop()
 else:
     # Mostrar información del usuario
     user_data = st.session_state.get('user_data', {})
@@ -1118,12 +1119,12 @@ else:
     tipo_estructura = st.sidebar.selectbox("Tipo de Sistema Estructural", ["Pórticos", "Muros Estructurales", "Dual"], 0)
     factor_importancia = st.sidebar.number_input("Factor de Importancia (U)", 1.0, 1.5, 1.0, 0.1)
 
-# =====================
-# MENÚ PRINCIPAL
-# =====================
-if opcion == "🏗️ Cálculo Básico":
-    st.title("Cálculo Básico de Análisis Estructural")
-    st.info("Plan gratuito: Cálculos básicos de análisis estructural")
+    # =====================
+    # MENÚ PRINCIPAL
+    # =====================
+    if opcion == "🏗️ Cálculo Básico":
+        st.title("Cálculo Básico de Análisis Estructural")
+        st.info("Plan gratuito: Cálculos básicos de análisis estructural")
     
     # Pestañas para diferentes tipos de cálculos
     tab1, tab2, tab3 = st.tabs(["📏 Propiedades", "🏗️ Materiales", "⚖️ Cargas"])
