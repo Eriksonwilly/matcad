@@ -263,6 +263,223 @@ def graficar_viga_continua_nilson(L1, L2, w1, w2):
     return fig
 
 # =====================
+# FUNCIONES PARA GRÁFICOS DE CORTANTES Y MOMENTOS (JACK C. MCCORMAC)
+# =====================
+
+def calcular_cortantes_momentos_viga_simple_mccormac(L, w, P=None, a=None):
+    """
+    Calcula cortantes y momentos para viga simplemente apoyada
+    Según Jack C. McCormac - Diseño de Estructuras de Concreto
+    
+    L: Luz de la viga (m)
+    w: Carga distribuida (kg/m)
+    P: Carga puntual (kg) - opcional
+    a: Distancia de la carga puntual desde el apoyo izquierdo (m) - opcional
+    """
+    x = np.linspace(0, L, 100)
+    
+    # Inicializar arrays
+    V = np.zeros_like(x)
+    M = np.zeros_like(x)
+    
+    # Carga distribuida
+    if w > 0:
+        # Reacciones según McCormac
+        R_A = w * L / 2
+        R_B = w * L / 2
+        
+        # Cortantes y momentos
+        V = R_A - w * x
+        M = R_A * x - w * x**2 / 2
+    
+    # Carga puntual
+    if P is not None and a is not None:
+        # Reacciones según McCormac
+        R_A = P * (L - a) / L
+        R_B = P * a / L
+        
+        # Cortantes y momentos
+        for i, xi in enumerate(x):
+            if xi <= a:
+                V[i] = R_A
+                M[i] = R_A * xi
+            else:
+                V[i] = R_A - P
+                M[i] = R_A * xi - P * (xi - a)
+    
+    return x, V, M
+
+def calcular_cortantes_momentos_viga_empotrada_mccormac(L, w, P=None, a=None):
+    """
+    Calcula cortantes y momentos para viga empotrada
+    Según Jack C. McCormac - Diseño de Estructuras de Concreto
+    """
+    x = np.linspace(0, L, 100)
+    
+    # Inicializar arrays
+    V = np.zeros_like(x)
+    M = np.zeros_like(x)
+    
+    # Carga distribuida
+    if w > 0:
+        # Reacciones y momentos de empotramiento según McCormac
+        R_A = w * L / 2
+        M_A = -w * L**2 / 12
+        M_B = w * L**2 / 12
+        
+        # Cortantes y momentos
+        V = R_A - w * x
+        M = M_A + R_A * x - w * x**2 / 2
+    
+    # Carga puntual
+    if P is not None and a is not None:
+        # Reacciones y momentos de empotramiento según McCormac
+        R_A = P * (3*L - 2*a) * (L - a) / (2*L**2)
+        R_B = P * (3*L - 2*a) * a / (2*L**2)
+        M_A = -P * a * (L - a)**2 / (2*L**2)
+        M_B = P * a**2 * (L - a) / (2*L**2)
+        
+        # Cortantes y momentos
+        for i, xi in enumerate(x):
+            if xi <= a:
+                V[i] = R_A
+                M[i] = M_A + R_A * xi
+            else:
+                V[i] = R_A - P
+                M[i] = M_A + R_A * xi - P * (xi - a)
+    
+    return x, V, M
+
+def calcular_cortantes_momentos_viga_continua_mccormac(L1, L2, w1, w2):
+    """
+    Calcula cortantes y momentos para viga continua de dos tramos
+    Según Jack C. McCormac - Diseño de Estructuras de Concreto
+    """
+    # Coeficientes de momento para viga continua según McCormac
+    # M_B = -w1*L1^2/8 - w2*L2^2/8 (aproximación)
+    M_B = -(w1 * L1**2 + w2 * L2**2) / 8
+    
+    # Reacciones
+    R_A = (w1 * L1 / 2) - (M_B / L1)
+    R_B1 = (w1 * L1 / 2) + (M_B / L1)
+    R_B2 = (w2 * L2 / 2) - (M_B / L2)
+    R_C = (w2 * L2 / 2) + (M_B / L2)
+    
+    # Generar puntos para cada tramo
+    x1 = np.linspace(0, L1, 50)
+    x2 = np.linspace(0, L2, 50)
+    
+    # Cortantes y momentos para tramo 1
+    V1 = R_A - w1 * x1
+    M1 = R_A * x1 - w1 * x1**2 / 2
+    
+    # Cortantes y momentos para tramo 2
+    V2 = R_B2 - w2 * x2
+    M2 = R_B2 * x2 - w2 * x2**2 / 2 + M_B
+    
+    return x1, V1, M1, x2, V2, M2, R_A, R_B1, R_B2, R_C, M_B
+
+def graficar_cortantes_momentos_mccormac(L, w, P=None, a=None, tipo_viga="simple"):
+    """
+    Genera gráficos de cortantes y momentos según Jack C. McCormac
+    """
+    try:
+        import matplotlib.pyplot as plt
+        import matplotlib
+        matplotlib.use('Agg')  # Backend no interactivo para Streamlit
+    except ImportError:
+        st.error("❌ Matplotlib no está instalado. Instale con: pip install matplotlib")
+        return None
+    
+    if tipo_viga == "simple":
+        x, V, M = calcular_cortantes_momentos_viga_simple_mccormac(L, w, P, a)
+    elif tipo_viga == "empotrada":
+        x, V, M = calcular_cortantes_momentos_viga_empotrada_mccormac(L, w, P, a)
+    else:
+        st.error("Tipo de viga no válido")
+        return None
+    
+    # Crear figura con subplots
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 8))
+    
+    # Gráfico de cortantes
+    ax1.plot(x, V, 'r-', linewidth=2, label='Cortante (V)')
+    ax1.axhline(y=0, color='k', linestyle='-', alpha=0.3)
+    ax1.axvline(x=0, color='k', linestyle='-', alpha=0.3)
+    ax1.axvline(x=L, color='k', linestyle='-', alpha=0.3)
+    ax1.fill_between(x, V, 0, alpha=0.3, color='red')
+    ax1.set_title(f'Diagrama de Cortantes - Viga {tipo_viga.title()} (McCormac)', fontsize=14, fontweight='bold')
+    ax1.set_xlabel('Distancia (m)')
+    ax1.set_ylabel('Cortante (kg)')
+    ax1.grid(True, alpha=0.3)
+    ax1.legend()
+    
+    # Gráfico de momentos
+    ax2.plot(x, M, 'b-', linewidth=2, label='Momento (M)')
+    ax2.axhline(y=0, color='k', linestyle='-', alpha=0.3)
+    ax2.axvline(x=0, color='k', linestyle='-', alpha=0.3)
+    ax2.axvline(x=L, color='k', linestyle='-', alpha=0.3)
+    ax2.fill_between(x, M, 0, alpha=0.3, color='blue')
+    ax2.set_title(f'Diagrama de Momentos - Viga {tipo_viga.title()} (McCormac)', fontsize=14, fontweight='bold')
+    ax2.set_xlabel('Distancia (m)')
+    ax2.set_ylabel('Momento (kg·m)')
+    ax2.grid(True, alpha=0.3)
+    ax2.legend()
+    
+    plt.tight_layout()
+    return fig
+
+def graficar_viga_continua_mccormac(L1, L2, w1, w2):
+    """
+    Genera gráficos de cortantes y momentos para viga continua según McCormac
+    """
+    try:
+        import matplotlib.pyplot as plt
+        import matplotlib
+        matplotlib.use('Agg')  # Backend no interactivo para Streamlit
+    except ImportError:
+        st.error("❌ Matplotlib no está instalado. Instale con: pip install matplotlib")
+        return None
+    
+    x1, V1, M1, x2, V2, M2, R_A, R_B1, R_B2, R_C, M_B = calcular_cortantes_momentos_viga_continua_mccormac(L1, L2, w1, w2)
+    
+    # Crear figura con subplots
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(14, 10))
+    
+    # Gráfico de cortantes
+    ax1.plot(x1, V1, 'r-', linewidth=2, label='Tramo 1')
+    ax1.plot(x2 + L1, V2, 'r-', linewidth=2, label='Tramo 2')
+    ax1.axhline(y=0, color='k', linestyle='-', alpha=0.3)
+    ax1.axvline(x=0, color='k', linestyle='-', alpha=0.3)
+    ax1.axvline(x=L1, color='k', linestyle='-', alpha=0.3)
+    ax1.axvline(x=L1+L2, color='k', linestyle='-', alpha=0.3)
+    ax1.fill_between(x1, V1, 0, alpha=0.3, color='red')
+    ax1.fill_between(x2 + L1, V2, 0, alpha=0.3, color='red')
+    ax1.set_title('Diagrama de Cortantes - Viga Continua (McCormac)', fontsize=14, fontweight='bold')
+    ax1.set_xlabel('Distancia (m)')
+    ax1.set_ylabel('Cortante (kg)')
+    ax1.grid(True, alpha=0.3)
+    ax1.legend()
+    
+    # Gráfico de momentos
+    ax2.plot(x1, M1, 'b-', linewidth=2, label='Tramo 1')
+    ax2.plot(x2 + L1, M2, 'b-', linewidth=2, label='Tramo 2')
+    ax2.axhline(y=0, color='k', linestyle='-', alpha=0.3)
+    ax2.axvline(x=0, color='k', linestyle='-', alpha=0.3)
+    ax2.axvline(x=L1, color='k', linestyle='-', alpha=0.3)
+    ax2.axvline(x=L1+L2, color='k', linestyle='-', alpha=0.3)
+    ax2.fill_between(x1, M1, 0, alpha=0.3, color='blue')
+    ax2.fill_between(x2 + L1, M2, 0, alpha=0.3, color='blue')
+    ax2.set_title('Diagrama de Momentos - Viga Continua (McCormac)', fontsize=14, fontweight='bold')
+    ax2.set_xlabel('Distancia (m)')
+    ax2.set_ylabel('Momento (kg·m)')
+    ax2.grid(True, alpha=0.3)
+    ax2.legend()
+    
+    plt.tight_layout()
+    return fig
+
+# =====================
 # SISTEMA DE LOGIN Y PLANES
 # =====================
 def hash_password(password):
@@ -797,6 +1014,9 @@ def show_auth_page():
 # Verificar estado de autenticación
 if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
+
+# Definir opción por defecto
+opcion = "🏗️ Cálculo Básico"
 
 if not st.session_state['logged_in']:
     show_auth_page()
@@ -1895,8 +2115,8 @@ elif opcion == "📈 Gráficos":
                 st.warning("⚠️ No hay resultados disponibles. Realiza primero el análisis completo.")
     
     with tab2:
-        st.subheader("🔧 Diagramas de Cortantes y Momentos - Arthur H. Nilson")
-        st.info("📚 Basado en 'Diseño de Estructuras de Concreto' de Arthur H. Nilson")
+        st.subheader("🔧 Diagramas de Cortantes y Momentos - Jack C. McCormac")
+        st.info("📚 Basado en 'Diseño de Estructuras de Concreto' de Jack C. McCormac")
         
         # Verificar si matplotlib está disponible
         if not MATPLOTLIB_AVAILABLE:
@@ -1908,7 +2128,7 @@ elif opcion == "📈 Gráficos":
             tipo_viga = st.selectbox(
                 "Selecciona el tipo de viga:",
                 ["Viga Simplemente Apoyada", "Viga Empotrada", "Viga Continua (2 tramos)"],
-                help="Según Arthur H. Nilson - Diseño de Estructuras de Concreto"
+                help="Según Jack C. McCormac - Diseño de Estructuras de Concreto"
             )
             
             if tipo_viga == "Viga Simplemente Apoyada":
@@ -1929,12 +2149,12 @@ elif opcion == "📈 Gráficos":
                         a = None
                 
                 if st.button("🔬 Generar Diagramas", type="primary"):
-                    fig = graficar_cortantes_momentos_nilson(L, w, P, a, "simple")
+                    fig = graficar_cortantes_momentos_mccormac(L, w, P, a, "simple")
                     if fig:
                         st.pyplot(fig)
                         
                         # Mostrar valores máximos
-                        x, V, M = calcular_cortantes_momentos_viga_simple(L, w, P, a)
+                        x, V, M = calcular_cortantes_momentos_viga_simple_mccormac(L, w, P, a)
                         col1, col2, col3 = st.columns(3)
                         with col1:
                             st.metric("Cortante Máximo", f"{max(abs(V)):.1f} kg")
@@ -1961,12 +2181,12 @@ elif opcion == "📈 Gráficos":
                         a = None
                 
                 if st.button("🔬 Generar Diagramas", type="primary", key="btn_empotrada"):
-                    fig = graficar_cortantes_momentos_nilson(L, w, P, a, "empotrada")
+                    fig = graficar_cortantes_momentos_mccormac(L, w, P, a, "empotrada")
                     if fig:
                         st.pyplot(fig)
                         
                         # Mostrar valores máximos
-                        x, V, M = calcular_cortantes_momentos_viga_empotrada(L, w, P, a)
+                        x, V, M = calcular_cortantes_momentos_viga_empotrada_mccormac(L, w, P, a)
                         col1, col2, col3 = st.columns(3)
                         with col1:
                             st.metric("Cortante Máximo", f"{max(abs(V)):.1f} kg")
@@ -1988,12 +2208,12 @@ elif opcion == "📈 Gráficos":
                     w2 = st.number_input("Carga distribuida tramo 2 (kg/m)", 0.0, 10000.0, 1000.0, 100.0)
                 
                 if st.button("🔬 Generar Diagramas", type="primary", key="btn_continua"):
-                    fig = graficar_viga_continua_nilson(L1, L2, w1, w2)
+                    fig = graficar_viga_continua_mccormac(L1, L2, w1, w2)
                     if fig:
                         st.pyplot(fig)
                         
                         # Mostrar valores máximos
-                        x1, V1, M1, x2, V2, M2, R_A, R_B1, R_B2, R_C, M_B = calcular_cortantes_momentos_viga_continua(L1, L2, w1, w2)
+                        x1, V1, M1, x2, V2, M2, R_A, R_B1, R_B2, R_C, M_B = calcular_cortantes_momentos_viga_continua_mccormac(L1, L2, w1, w2)
                         
                         col1, col2, col3, col4 = st.columns(4)
                         with col1:
@@ -2019,9 +2239,9 @@ elif opcion == "📈 Gráficos":
             
             # Información técnica
             st.markdown("---")
-            st.subheader("📚 Información Técnica - Arthur H. Nilson")
+            st.subheader("📚 Información Técnica - Jack C. McCormac")
             st.markdown("""
-            **Referencia:** Diseño de Estructuras de Concreto - Arthur H. Nilson
+            **Referencia:** Diseño de Estructuras de Concreto - Jack C. McCormac
             
             **Fórmulas utilizadas:**
             - **Viga simplemente apoyada:** Reacciones R = wL/2, Momento máximo M = wL²/8
