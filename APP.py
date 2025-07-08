@@ -505,7 +505,16 @@ def generar_pdf_reportlab(resultados, datos_entrada, plan="premium"):
     """
     Genera un PDF profesional usando ReportLab
     """
-    if not REPORTLAB_AVAILABLE:
+    # Verificar ReportLab dinámicamente
+    try:
+        from reportlab.lib.pagesizes import A4, letter
+        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak, Image
+        from reportlab.lib import colors
+        from reportlab.lib.styles import getSampleStyleSheet
+        from reportlab.lib.units import inch
+        REPORTLAB_AVAILABLE = True
+    except ImportError:
+        REPORTLAB_AVAILABLE = False
         # Crear un archivo de texto simple como fallback
         pdf_buffer = io.BytesIO()
         reporte_texto = f"""
@@ -542,12 +551,17 @@ Generado por: CONSORCIO DEJ
             # Agregar elemento de texto simple como fallback
             elements.append(Paragraph(str(element), styleN))
     
-    # Título principal
+    # Título principal con diseño mejorado
     try:
-        add_element(Paragraph("CONSORCIO DEJ", styleH))
-        add_element(Paragraph("Ingeniería y Construcción", styleN))
-        add_element(Paragraph(f"Reporte de Análisis Estructural - {plan.upper()}", styleH2))
-        add_element(Paragraph(f"Fecha: {datetime.now().strftime('%d/%m/%Y %H:%M')}", styleN))
+        # Header con logo y título
+        add_element(Paragraph("🏗️ CONSORCIO DEJ", styleH))
+        add_element(Paragraph("Ingeniería y Construcción Especializada", styleN))
+        add_element(Paragraph("Software de Análisis Estructural Profesional", styleN))
+        add_element(Spacer(1, 10))
+        add_element(Paragraph(f"📄 REPORTE DE ANÁLISIS ESTRUCTURAL - {plan.upper()}", styleH2))
+        add_element(Paragraph(f"📅 Fecha: {datetime.now().strftime('%d/%m/%Y %H:%M')}", styleN))
+        add_element(Paragraph(f"👤 Usuario: {st.session_state.get('user', 'N/A')}", styleN))
+        add_element(Paragraph(f"📋 Plan: {plan.title()}", styleN))
         add_element(Spacer(1, 20))
     except Exception as e:
         print(f"Error en título: {e}")
@@ -1886,28 +1900,23 @@ Plan: Gratuito
                 with col2:
                     # Generar PDF premium
                     if st.button("📄 Generar PDF Premium", type="primary", key="btn_pdf_premium"):
-                        if REPORTLAB_AVAILABLE:
-                            try:
-                                with st.spinner("Generando PDF Premium..."):
-                                    pdf_buffer = generar_pdf_reportlab(resultados, datos_entrada, "premium")
-                                    if pdf_buffer:
-                                        st.success("✅ PDF Premium generado exitosamente")
-                                        st.download_button(
-                                            label="📥 Descargar PDF Premium",
-                                            data=pdf_buffer.getvalue(),
-                                            file_name=f"reporte_premium_analisis_estructural_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
-                                            mime="application/pdf",
-                                            key="download_pdf_premium"
-                                        )
-                                    else:
-                                        st.error("⚠️ Error: No se pudo generar el PDF")
-                            except Exception as e:
-                                st.error(f"⚠️ Error generando PDF: {str(e)}")
-                                st.info("🔧 Instale ReportLab: pip install reportlab")
-                        else:
-                            st.error("⚠️ ReportLab no está instalado")
-                            st.info("🔧 Para generar PDFs, instale ReportLab:")
-                            st.code("pip install reportlab")
+                        try:
+                            with st.spinner("Generando PDF Premium..."):
+                                pdf_buffer = generar_pdf_reportlab(resultados, datos_entrada, "premium")
+                                if pdf_buffer:
+                                    st.success("✅ PDF Premium generado exitosamente")
+                                    st.download_button(
+                                        label="📥 Descargar PDF Premium",
+                                        data=pdf_buffer.getvalue(),
+                                        file_name=f"reporte_premium_analisis_estructural_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
+                                        mime="application/pdf",
+                                        key="download_pdf_premium"
+                                    )
+                                else:
+                                    st.error("⚠️ Error: No se pudo generar el PDF")
+                        except Exception as e:
+                            st.error(f"⚠️ Error generando PDF: {str(e)}")
+                            st.info("🔧 Verifique la instalación de ReportLab: pip install reportlab")
                 
                 with col3:
                     if st.button("🖨️ Generar Reporte en Pantalla", type="primary"):
