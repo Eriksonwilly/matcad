@@ -1,10 +1,18 @@
 import streamlit as st
 import math
+from math import sqrt
 import numpy as np
 import pandas as pd
 from datetime import datetime
-import matplotlib.pyplot as plt
-from matplotlib.patches import Rectangle, Polygon
+import hashlib
+import matplotlib
+try:
+    matplotlib.use('Agg')  # Backend no interactivo para Streamlit
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import Rectangle, Polygon
+    MATPLOTLIB_AVAILABLE = True
+except ImportError:
+    MATPLOTLIB_AVAILABLE = False
 import io
 import tempfile
 import os
@@ -491,7 +499,6 @@ def generar_pdf_reportlab(resultados, datos_entrada, plan="premium"):
     Genera un PDF profesional usando ReportLab
     """
     if not REPORTLAB_AVAILABLE:
-        # Crear un archivo de texto simple como fallback
         pdf_buffer = io.BytesIO()
         reporte_texto = f"""
 CONSORCIO DEJ
@@ -508,8 +515,6 @@ Generado por: CONSORCIO DEJ
         pdf_buffer.write(reporte_texto.encode('utf-8'))
         pdf_buffer.seek(0)
         return pdf_buffer
-    
-    # Crear archivo temporal
     pdf_buffer = io.BytesIO()
     doc = SimpleDocTemplate(pdf_buffer, pagesize=A4)
     styles = getSampleStyleSheet()
@@ -757,7 +762,7 @@ Generado por: CONSORCIO DEJ
     # Construir PDF
     doc.build(elements)
     pdf_buffer.seek(0)
-    return pdf_buffer
+    return pdf_buffer  # No cerrar el buffer, solo hacer seek(0)
 
 # =====================
 # FUNCIONES DE CÁLCULO
