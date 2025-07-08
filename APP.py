@@ -19,6 +19,7 @@ try:
     MATPLOTLIB_AVAILABLE = True
 except ImportError:
     MATPLOTLIB_AVAILABLE = False
+    print("Matplotlib no está disponible")
 
 # Importar sistema de pagos simple
 try:
@@ -532,20 +533,29 @@ Generado por: CONSORCIO DEJ
     styleH2 = styles["Heading2"]
     elements = []
     
+    # Función auxiliar para agregar elementos de forma segura
+    def add_element(element):
+        try:
+            elements.append(element)
+        except Exception as e:
+            print(f"Error agregando elemento: {e}")
+            # Agregar elemento de texto simple como fallback
+            elements.append(Paragraph(str(element), styleN))
+    
     # Título principal
     try:
-        elements.append(Paragraph("CONSORCIO DEJ", styleH))
-        elements.append(Paragraph("Ingeniería y Construcción", styleN))
-        elements.append(Paragraph(f"Reporte de Análisis Estructural - {plan.upper()}", styleH2))
-        elements.append(Paragraph(f"Fecha: {datetime.now().strftime('%d/%m/%Y %H:%M')}", styleN))
-        elements.append(Spacer(1, 20))
+        add_element(Paragraph("CONSORCIO DEJ", styleH))
+        add_element(Paragraph("Ingeniería y Construcción", styleN))
+        add_element(Paragraph(f"Reporte de Análisis Estructural - {plan.upper()}", styleH2))
+        add_element(Paragraph(f"Fecha: {datetime.now().strftime('%d/%m/%Y %H:%M')}", styleN))
+        add_element(Spacer(1, 20))
     except Exception as e:
         print(f"Error en título: {e}")
-        elements.append(Paragraph("CONSORCIO DEJ - Reporte de Análisis Estructural", styleN))
+        add_element(Paragraph("CONSORCIO DEJ - Reporte de Análisis Estructural", styleN))
     
     if plan == "premium":
         # Reporte premium completo
-        elements.append(Paragraph("1. DATOS DE ENTRADA", styleH))
+        add_element(Paragraph("1. DATOS DE ENTRADA", styleH))
         datos_tabla = [
             ["Parámetro", "Valor", "Unidad"],
             ["Resistencia del concreto (f'c)", f"{datos_entrada.get('f_c', 0)}", "kg/cm²"],
@@ -553,7 +563,10 @@ Generado por: CONSORCIO DEJ
             ["Luz libre de vigas", f"{datos_entrada.get('L_viga', 0)}", "m"],
             ["Número de pisos", f"{datos_entrada.get('num_pisos', 0)}", ""],
             ["Carga Muerta", f"{datos_entrada.get('CM', 0)}", "kg/m²"],
-            ["Carga Viva", f"{datos_entrada.get('CV', 0)}", "kg/m²"]
+            ["Carga Viva", f"{datos_entrada.get('CV', 0)}", "kg/m²"],
+            ["Zona Sísmica", f"{datos_entrada.get('zona_sismica', 'N/A')}", ""],
+            ["Tipo de Suelo", f"{datos_entrada.get('tipo_suelo', 'N/A')}", ""],
+            ["Tipo de Estructura", f"{datos_entrada.get('tipo_estructura', 'N/A')}", ""]
         ]
         
         tabla = Table(datos_tabla, colWidths=[200, 100, 80])
@@ -562,43 +575,220 @@ Generado por: CONSORCIO DEJ
             ('GRID', (0, 0), (-1, -1), 1, (0, 0, 0)),  # black
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
         ]))
-        elements.append(tabla)
-        elements.append(Spacer(1, 20))
+        add_element(tabla)
+        add_element(Spacer(1, 20))
         
-        # Resultados calculados
-        elements.append(Paragraph("2. RESULTADOS CALCULADOS", styleH))
+        # Propiedades de los materiales
+        add_element(Paragraph("2. PROPIEDADES DE LOS MATERIALES", styleH))
         if resultados:
-            resultados_tabla = [
-                ["Resultado", "Valor", "Unidad"],
+            props_tabla = [
+                ["Propiedad", "Valor", "Unidad"],
+                ["Módulo de elasticidad del concreto (Ec)", f"{resultados.get('Ec', 0):.0f}", "kg/cm²"],
+                ["Módulo de elasticidad del acero (Es)", f"{resultados.get('Es', 0):,}", "kg/cm²"],
+                ["Deformación última del concreto (εcu)", f"{resultados.get('ecu', 0)}", ""],
+                ["Deformación de fluencia (εy)", f"{resultados.get('ey', 0):.4f}", ""],
+                ["Resistencia a tracción (fr)", f"{resultados.get('fr', 0):.1f}", "kg/cm²"],
+                ["β1", f"{resultados.get('beta1', 0):.3f}", ""]
+            ]
+            
+            tabla_props = Table(props_tabla, colWidths=[200, 100, 80])
+            tabla_props.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), (144/255, 238/255, 144/255)),  # light green
+                ('GRID', (0, 0), (-1, -1), 1, (0, 0, 0)),  # black
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ]))
+            add_element(tabla_props)
+            add_element(Spacer(1, 20))
+        
+        # Dimensiones calculadas
+        add_element(Paragraph("3. DIMENSIONES CALCULADAS", styleH))
+        if resultados:
+            dim_tabla = [
+                ["Dimensión", "Valor", "Unidad"],
                 ["Peso total estimado", f"{resultados.get('peso_total', 0):.1f}", "ton"],
-                ["Módulo de elasticidad del concreto", f"{resultados.get('Ec', 0):.0f}", "kg/cm²"],
-                ["Módulo de elasticidad del acero", f"{resultados.get('Es', 0):,}", "kg/cm²"],
                 ["Espesor de losa", f"{resultados.get('h_losa', 0)*100:.0f}", "cm"],
                 ["Dimensiones de viga", f"{resultados.get('b_viga', 0):.0f}×{resultados.get('d_viga', 0):.0f}", "cm"],
                 ["Dimensiones de columna", f"{resultados.get('lado_columna', 0):.0f}×{resultados.get('lado_columna', 0):.0f}", "cm"]
             ]
             
-            tabla_resultados = Table(resultados_tabla, colWidths=[200, 100, 80])
-            tabla_resultados.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), (144/255, 238/255, 144/255)),  # light green
+            tabla_dim = Table(dim_tabla, colWidths=[200, 100, 80])
+            tabla_dim.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), (255/255, 255/255, 224/255)),  # light yellow
                 ('GRID', (0, 0), (-1, -1), 1, (0, 0, 0)),  # black
                 ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
             ]))
-            elements.append(tabla_resultados)
+            add_element(tabla_dim)
+            add_element(Spacer(1, 20))
+        
+        # Resultados de diseño estructural
+        if 'diseno_flexion' in resultados:
+            add_element(Paragraph("4. RESULTADOS DE DISEÑO ESTRUCTURAL (ACI 318-2025)", styleH))
+            
+            # Diseño por flexión
+            add_element(Paragraph("4.1 Diseño por Flexión", styleH2))
+            flexion_tabla = [
+                ["Parámetro", "Valor", "Unidad"],
+                ["Momento Último (Mu)", f"{resultados.get('Mu_estimado', 0):.0f}", "kg·m"],
+                ["Cuantía Balanceada (ρb)", f"{resultados['diseno_flexion'].get('rho_b', 0):.4f}", ""],
+                ["Cuantía Mínima (ρmin)", f"{resultados['diseno_flexion'].get('rho_min', 0):.4f}", ""],
+                ["Cuantía Máxima (ρmax)", f"{resultados['diseno_flexion'].get('rho_max', 0):.4f}", ""],
+                ["Área de Acero (As)", f"{resultados['diseno_flexion'].get('As', 0):.1f}", "cm²"],
+                ["Momento Resistente (φMn)", f"{resultados['diseno_flexion'].get('phiMn', 0):.0f}", "kg·m"]
+            ]
+            
+            tabla_flexion = Table(flexion_tabla, colWidths=[200, 100, 80])
+            tabla_flexion.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.lightcoral),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ]))
+            add_element(tabla_flexion)
+            add_element(Spacer(1, 15))
+            
+            # Diseño por cortante
+            add_element(Paragraph("4.2 Diseño por Cortante", styleH2))
+            cortante_tabla = [
+                ["Parámetro", "Valor", "Unidad"],
+                ["Cortante Último (Vu)", f"{resultados.get('Vu_estimado', 0):.0f}", "kg"],
+                ["Resistencia Concreto (Vc)", f"{resultados['diseno_cortante'].get('Vc', 0):.0f}", "kg"],
+                ["Resistencia Acero (Vs)", f"{resultados['diseno_cortante'].get('Vs_requerido', 0):.0f}", "kg"],
+                ["Área Estribos (Av/s)", f"{resultados['diseno_cortante'].get('Av_s_requerido', 0):.3f}", "cm²/cm"]
+            ]
+            
+            tabla_cortante = Table(cortante_tabla, colWidths=[200, 100, 80])
+            tabla_cortante.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.lightblue),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ]))
+            add_element(tabla_cortante)
+            add_element(Spacer(1, 15))
+            
+            # Diseño de columnas
+            add_element(Paragraph("4.3 Diseño de Columnas", styleH2))
+            columna_tabla = [
+                ["Parámetro", "Valor", "Unidad"],
+                ["Carga Axial Última (Pu)", f"{resultados.get('Pu_estimado', 0):.0f}", "kg"],
+                ["Resistencia Nominal (Pn)", f"{resultados['diseno_columna'].get('Pn', 0):.0f}", "kg"],
+                ["Resistencia Diseño (φPn)", f"{resultados['diseno_columna'].get('phiPn', 0):.0f}", "kg"]
+            ]
+            
+            tabla_columna = Table(columna_tabla, colWidths=[200, 100, 80])
+            tabla_columna.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.lightgreen),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ]))
+            add_element(tabla_columna)
+            add_element(Spacer(1, 15))
+            
+            # Análisis sísmico
+            if 'analisis_sismico' in resultados:
+                add_element(Paragraph("4.4 Análisis Sísmico (E.030)", styleH2))
+                sismico_tabla = [
+                    ["Parámetro", "Valor", "Unidad"],
+                    ["Factor Zona (Z)", f"{resultados['analisis_sismico'].get('Z', 0):.2f}", ""],
+                    ["Factor Suelo (S)", f"{resultados['analisis_sismico'].get('S', 0):.1f}", ""],
+                    ["Factor Importancia (U)", f"{resultados['analisis_sismico'].get('U', 0):.1f}", ""],
+                    ["Cortante Basal (V)", f"{resultados['analisis_sismico'].get('cortante_basal_ton', 0):.1f}", "ton"]
+                ]
+                
+                tabla_sismico = Table(sismico_tabla, colWidths=[200, 100, 80])
+                tabla_sismico.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.lightyellow),
+                    ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ]))
+                add_element(tabla_sismico)
+                add_element(Spacer(1, 20))
+        
+        # Verificaciones de estabilidad
+        add_element(Paragraph("5. VERIFICACIONES DE ESTABILIDAD", styleH))
+        verificaciones = []
+        
+        if resultados.get('peso_total', 0) < 1000:
+            verificaciones.append(["Peso total", "CUMPLE", f"Peso = {resultados.get('peso_total', 0):.1f} ton < 1000 ton"])
+        else:
+            verificaciones.append(["Peso total", "NO CUMPLE", f"Peso = {resultados.get('peso_total', 0):.1f} ton > 1000 ton"])
+            
+        if resultados.get('Ec', 0) > 200000:
+            verificaciones.append(["Módulo de elasticidad", "CUMPLE", f"Ec = {resultados.get('Ec', 0):.0f} kg/cm² > 200000"])
+        else:
+            verificaciones.append(["Módulo de elasticidad", "ACEPTABLE", f"Ec = {resultados.get('Ec', 0):.0f} kg/cm²"])
+        
+        if 'diseno_flexion' in resultados:
+            if resultados['diseno_flexion'].get('verificacion', False):
+                verificaciones.append(["Diseño por flexión", "CUMPLE", "φMn ≥ Mu"])
+            else:
+                verificaciones.append(["Diseño por flexión", "NO CUMPLE", "φMn < Mu"])
+                
+            if resultados['diseno_cortante'].get('verificacion', False):
+                verificaciones.append(["Diseño por cortante", "CUMPLE", "φ(Vc + Vs) ≥ Vu"])
+            else:
+                verificaciones.append(["Diseño por cortante", "NO CUMPLE", "φ(Vc + Vs) < Vu"])
+                
+            if resultados['diseno_columna'].get('verificacion', False):
+                verificaciones.append(["Diseño de columna", "CUMPLE", "φPn ≥ Pu"])
+            else:
+                verificaciones.append(["Diseño de columna", "NO CUMPLE", "φPn < Pu"])
+        
+        verif_tabla = [["Verificación", "Estado", "Detalle"]] + verificaciones
+        tabla_verif = Table(verif_tabla, colWidths=[150, 100, 150])
+        tabla_verif.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.lightcoral),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ]))
+        add_element(tabla_verif)
+        add_element(Spacer(1, 20))
+        
+        # Recomendaciones técnicas
+        add_element(Paragraph("6. RECOMENDACIONES TÉCNICAS", styleH))
+        add_element(Paragraph("• Verificar la capacidad portante del suelo en campo", styleN))
+        add_element(Paragraph("• Revisar el diseño del refuerzo estructural según ACI 318-2025", styleN))
+        add_element(Paragraph("• Considerar efectos sísmicos según la normativa local", styleN))
+        add_element(Paragraph("• Realizar inspecciones periódicas durante la construcción", styleN))
+        add_element(Paragraph("• Monitorear deformaciones durante el servicio", styleN))
+        add_element(Spacer(1, 20))
         
     else:
         # Reporte básico
-        elements.append(Paragraph("RESULTADOS BÁSICOS", styleH))
+        add_element(Paragraph("RESULTADOS BÁSICOS", styleH))
         if resultados:
-            elements.append(Paragraph(f"Peso total estimado: {resultados.get('peso_total', 0):.1f} ton", styleN))
-            elements.append(Paragraph(f"Resistencia del concreto: {datos_entrada.get('f_c', 0)} kg/cm²", styleN))
-            elements.append(Paragraph(f"Resistencia del acero: {datos_entrada.get('f_y', 0)} kg/cm²", styleN))
-        elements.append(Paragraph("Este es un reporte básico del plan gratuito.", styleN))
+            add_element(Paragraph(f"Peso total estimado: {resultados.get('peso_total', 0):.1f} ton", styleN))
+            add_element(Paragraph(f"Resistencia del concreto: {datos_entrada.get('f_c', 0)} kg/cm²", styleN))
+            add_element(Paragraph(f"Resistencia del acero: {datos_entrada.get('f_y', 0)} kg/cm²", styleN))
+        add_element(Paragraph("Este es un reporte básico del plan gratuito.", styleN))
+    
+    # Información del proyecto
+    add_element(Spacer(1, 20))
+    add_element(Paragraph("INFORMACIÓN DEL PROYECTO", styleH2))
+    add_element(Paragraph(f"Empresa: CONSORCIO DEJ", styleN))
+    add_element(Paragraph(f"Método de análisis: ACI 318-2025 y E.060", styleN))
+    add_element(Paragraph(f"Fecha de análisis: {datetime.now().strftime('%d/%m/%Y %H:%M')}", styleN))
+    add_element(Paragraph(f"Plan: {plan.title()}", styleN))
+    add_element(Paragraph(f"Software: Streamlit + Python", styleN))
     
     # Construir PDF
-    doc.build(elements)
-    pdf_buffer.seek(0)
-    return pdf_buffer
+    try:
+        doc.build(elements)
+        pdf_buffer.seek(0)
+        return pdf_buffer
+    except Exception as e:
+        print(f"Error construyendo PDF: {e}")
+        # Fallback a texto simple
+        pdf_buffer = io.BytesIO()
+        reporte_texto = f"""
+CONSORCIO DEJ - Reporte de Análisis Estructural
+Fecha: {datetime.now().strftime('%d/%m/%Y %H:%M')}
+Plan: {plan.upper()}
+
+Error generando PDF: {e}
+Para reportes en PDF, verifique la instalación de ReportLab.
+        """
+        pdf_buffer.write(reporte_texto.encode('utf-8'))
+        pdf_buffer.seek(0)
+        return pdf_buffer
 
 # =====================
 # FUNCIONES DE CÁLCULO
@@ -2120,7 +2310,13 @@ Plan: Gratuito
             st.info("📚 Basado en 'Diseño de Estructuras de Concreto' de Jack C. McCormac")
             
             # Verificar si matplotlib está disponible
-            if not MATPLOTLIB_AVAILABLE:
+            try:
+                import matplotlib.pyplot as plt
+                import matplotlib
+                matplotlib.use('Agg')  # Backend no interactivo para Streamlit
+                MATPLOTLIB_AVAILABLE = True
+            except ImportError:
+                MATPLOTLIB_AVAILABLE = False
                 st.error("❌ Matplotlib no está instalado. Para usar esta función, instale matplotlib:")
                 st.code("pip install matplotlib")
                 st.info("🔧 Después de instalar matplotlib, recarga la aplicación")
