@@ -499,6 +499,7 @@ def generar_pdf_reportlab(resultados, datos_entrada, plan="premium"):
     Genera un PDF profesional con formato de tesis (portada, índice, secciones, tablas, paginación, etc.)
     siguiendo el modelo ing_Rey_concreto_armado.pdf, ahora con gráficos de cortantes, momentos y cálculos principales.
     """
+    from reportlab.lib import colors  # <--- Importar colors aquí para asegurar su disponibilidad
     if not REPORTLAB_AVAILABLE:
         pdf_buffer = io.BytesIO()
         reporte_texto = f"""
