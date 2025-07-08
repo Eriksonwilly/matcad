@@ -1833,28 +1833,28 @@ elif opcion == "📈 Gráficos":
                         
                         fig1.update_traces(texttemplate='%{y:.2f}', textposition='outside')
                         st.plotly_chart(fig1, use_container_width=True)
-                else:
-                    # Gráfico alternativo con matplotlib
-                    try:
-                        import matplotlib.pyplot as plt
-                        import matplotlib
-                        matplotlib.use('Agg')  # Backend no interactivo para Streamlit
-                        fig1, ax1 = plt.subplots(figsize=(8, 6))
-                        propiedades = ['Ec', 'Es', 'fr', 'β1']
-                        valores = [resultados.get('Ec', 0)/1000, resultados.get('Es', 0)/1000000, 
-                                  resultados.get('fr', 0), resultados.get('beta1', 0)]
-                        colors = ['#4169E1', '#DC143C', '#32CD32', '#FFD700']
-                        bars = ax1.bar(propiedades, valores, color=colors)
-                        ax1.set_title("Propiedades de los Materiales - Plan Premium")
-                        ax1.set_ylabel("Valor")
-                        for bar in bars:
-                            height = bar.get_height()
-                            ax1.text(bar.get_x() + bar.get_width()/2., height + 0.1,
-                                   f'{height:.2f}', ha='center', va='bottom')
-                        st.pyplot(fig1)
-                    except ImportError:
-                        st.info("📊 Gráfico no disponible - Matplotlib no está instalado")
-                        st.write("Para ver gráficos, instale matplotlib: `pip install matplotlib`")
+                    else:
+                        # Gráfico alternativo con matplotlib
+                        try:
+                            import matplotlib.pyplot as plt
+                            import matplotlib
+                            matplotlib.use('Agg')  # Backend no interactivo para Streamlit
+                            fig1, ax1 = plt.subplots(figsize=(8, 6))
+                            propiedades = ['Ec', 'Es', 'fr', 'β1']
+                            valores = [resultados.get('Ec', 0)/1000, resultados.get('Es', 0)/1000000, 
+                                      resultados.get('fr', 0), resultados.get('beta1', 0)]
+                            colors = ['#4169E1', '#DC143C', '#32CD32', '#FFD700']
+                            bars = ax1.bar(propiedades, valores, color=colors)
+                            ax1.set_title("Propiedades de los Materiales - Plan Premium")
+                            ax1.set_ylabel("Valor")
+                            for bar in bars:
+                                height = bar.get_height()
+                                ax1.text(bar.get_x() + bar.get_width()/2., height + 0.1,
+                                       f'{height:.2f}', ha='center', va='bottom')
+                            st.pyplot(fig1)
+                        except ImportError:
+                            st.info("📊 Gráfico no disponible - Matplotlib no está instalado")
+                            st.write("Para ver gráficos, instale matplotlib: `pip install matplotlib`")
                 
                 with col2:
                     # Gráfico de dimensiones
