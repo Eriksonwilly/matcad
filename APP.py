@@ -1898,25 +1898,34 @@ Plan: Gratuito
                     )
                 
                 with col2:
-                    # Generar PDF premium
+                    # Generar PDF premium - Enfoque con session state
                     if st.button("📄 Generar PDF Premium", type="primary", key="btn_pdf_premium"):
                         try:
                             with st.spinner("Generando PDF Premium..."):
                                 pdf_buffer = generar_pdf_reportlab(resultados, datos_entrada, "premium")
                                 if pdf_buffer:
                                     st.success("✅ PDF Premium generado exitosamente")
-                                    st.download_button(
-                                        label="📥 Descargar PDF Premium",
-                                        data=pdf_buffer.getvalue(),
-                                        file_name=f"reporte_premium_analisis_estructural_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
-                                        mime="application/pdf",
-                                        key="download_pdf_premium"
-                                    )
+                                    # Guardar en session state
+                                    st.session_state['pdf_ready'] = True
+                                    st.session_state['pdf_data'] = pdf_buffer.getvalue()
+                                    st.session_state['pdf_filename'] = f"reporte_premium_analisis_estructural_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf"
+                                    st.rerun()
                                 else:
                                     st.error("⚠️ Error: No se pudo generar el PDF")
                         except Exception as e:
                             st.error(f"⚠️ Error generando PDF: {str(e)}")
                             st.info("🔧 Verifique la instalación de ReportLab: pip install reportlab")
+                    
+                    # Mostrar botón de descarga si el PDF está listo
+                    if st.session_state.get('pdf_ready', False):
+                        st.download_button(
+                            label="📥 Descargar PDF Premium",
+                            data=st.session_state['pdf_data'],
+                            file_name=st.session_state['pdf_filename'],
+                            mime="application/pdf",
+                            key="download_pdf_premium"
+                        )
+                        st.success("✅ PDF listo para descargar")
                 
                 with col3:
                     if st.button("🖨️ Generar Reporte en Pantalla", type="primary"):
