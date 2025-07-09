@@ -26,7 +26,7 @@ try:
     PLOTLY_AVAILABLE = True
 except ImportError:
     PLOTLY_AVAILABLE = False
-    st.warning("⚠️ Plotly no está instalado. Los gráficos interactivos no estarán disponibles.")
+    # No mostrar warning aquí para evitar problemas en la carga inicial
 
 # Verificación de reportlab
 try:
@@ -38,7 +38,7 @@ try:
     REPORTLAB_AVAILABLE = True
 except ImportError:
     REPORTLAB_AVAILABLE = False
-    st.warning("⚠️ ReportLab no está instalado. La generación de PDFs no estará disponible.")
+    # No mostrar warning aquí para evitar problemas en la carga inicial
 
 # Importar sistema de pagos simple
 try:
@@ -46,10 +46,25 @@ try:
     PAYMENT_SYSTEM_AVAILABLE = True
 except ImportError:
     PAYMENT_SYSTEM_AVAILABLE = False
-    st.warning("⚠️ Sistema de pagos no disponible. Usando modo demo.")
+    # No mostrar warning aquí para evitar problemas en la carga inicial
 
 # Variables globales para compatibilidad
 MATPLOTLIB_AVAILABLE = True  # Siempre disponible ya que se importa directamente
+
+def verificar_dependencias():
+    """Verifica las dependencias disponibles y muestra warnings apropiados"""
+    warnings = []
+    
+    if not PLOTLY_AVAILABLE:
+        warnings.append("⚠️ Plotly no está instalado. Los gráficos interactivos no estarán disponibles.")
+    
+    if not REPORTLAB_AVAILABLE:
+        warnings.append("⚠️ ReportLab no está instalado. La generación de PDFs no estará disponible.")
+    
+    if not PAYMENT_SYSTEM_AVAILABLE:
+        warnings.append("⚠️ Sistema de pagos no disponible. Usando modo demo.")
+    
+    return warnings
 
 # =====================
 # FUNCIONES PARA GRÁFICOS DE CORTANTES Y MOMENTOS (ARTHUR H. NILSON)
@@ -489,11 +504,49 @@ def generar_pdf_reportlab(resultados, datos_entrada, plan="premium"):
     Genera un PDF profesional con formato de tesis (portada, índice, secciones, tablas, paginación, etc.)
     siguiendo el modelo ing_Rey_concreto_armado.pdf, ahora con gráficos de cortantes, momentos y cálculos principales.
     """
-    from reportlab.lib import colors  # <--- Importar colors aquí para asegurar su disponibilidad
     if not REPORTLAB_AVAILABLE:
         pdf_buffer = io.BytesIO()
         reporte_texto = f"""
-CONSORCIO DEJ\nIngeniería y Construcción\nReporte de Análisis Estructural - {plan.upper()}\nFecha: {datetime.now().strftime('%d/%m/%Y %H:%M')}\n\nEste es un reporte básico. Para reportes en PDF, instale ReportLab:\npip install reportlab\n\n---\nGenerado por: CONSORCIO DEJ\n        """
+CONSORCIO DEJ
+Ingeniería y Construcción
+Reporte de Análisis Estructural - {plan.upper()}
+Fecha: {datetime.now().strftime('%d/%m/%Y %H:%M')}
+
+Este es un reporte básico. Para reportes en PDF, instale ReportLab:
+pip install reportlab
+
+---
+Generado por: CONSORCIO DEJ
+        """
+        pdf_buffer.write(reporte_texto.encode('utf-8'))
+        pdf_buffer.seek(0)
+        return pdf_buffer
+    
+    # Importar reportlab de manera segura
+    try:
+        from reportlab.lib import colors
+        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak, Image
+        from reportlab.lib.styles import getSampleStyleSheet
+        from reportlab.lib.units import inch
+        reportlab_imports_ok = True
+    except ImportError as e:
+        # Si no se puede importar reportlab, crear un PDF básico
+        pdf_buffer = io.BytesIO()
+        reporte_texto = f"""
+CONSORCIO DEJ
+Ingeniería y Construcción
+Reporte de Análisis Estructural - {plan.upper()}
+Fecha: {datetime.now().strftime('%d/%m/%Y %H:%M')}
+
+Error: No se pudo importar reportlab
+Para reportes en PDF completos, instale ReportLab:
+pip install reportlab
+
+Error específico: {str(e)}
+
+---
+Generado por: CONSORCIO DEJ
+        """
         pdf_buffer.write(reporte_texto.encode('utf-8'))
         pdf_buffer.seek(0)
         return pdf_buffer
@@ -799,84 +852,104 @@ CONSORCIO DEJ\nIngeniería y Construcción\nReporte de Análisis Estructural - {
 
     # 9. Resultados de Diseño
     elements.append(Paragraph("9. RESULTADOS DE DISEÑO ESTRUCTURAL", styleH))
-    # Gráfico de cortantes y momentos (si hay datos)
-    try:
-        from reportlab.platypus import Image as RLImage
-        import matplotlib.pyplot as plt
-        import numpy as np
-        # Usar los datos principales de la viga
-        L = float(datos_entrada.get('L_viga', 6.0))
-        w = float(datos_entrada.get('CM', 150)) + float(datos_entrada.get('CV', 200))
-        P = None
-        a = None
-        # Gráfico de cortantes y momentos
-        from io import BytesIO
-        x, V, M = calcular_cortantes_momentos_viga_simple_mccormac(L, w, P, a)
-        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(7, 5))
-        ax1.plot(x, V, 'r-', linewidth=2, label='Cortante (V)')
-        ax1.set_title('Diagrama de Cortantes')
-        ax1.set_xlabel('Distancia (m)')
-        ax1.set_ylabel('Cortante (kg)')
-        ax1.grid(True, alpha=0.3)
-        ax2.plot(x, M, 'b-', linewidth=2, label='Momento (M)')
-        ax2.set_title('Diagrama de Momentos')
-        ax2.set_xlabel('Distancia (m)')
-        ax2.set_ylabel('Momento (kg·m)')
-        ax2.grid(True, alpha=0.3)
-        plt.tight_layout()
-        cortante_momento_img = BytesIO()
-        fig.savefig(cortante_momento_img, format='png', bbox_inches='tight', dpi=200)
-        plt.close(fig)
-        cortante_momento_img.seek(0)
-        elements.append(Paragraph("Gráficos de Cortantes y Momentos para la Viga Principal", styleH2))
-        elements.append(RLImage(cortante_momento_img, width=400, height=280))
-        elements.append(Spacer(1, 10))
-    except Exception as e:
-        elements.append(Paragraph(f"No se pudo generar el gráfico de cortantes/momentos: {e}", styleN))
+    
+    # Verificar si matplotlib está disponible para gráficos
+    matplotlib_available = False
+    if MATPLOTLIB_AVAILABLE:
+        try:
+            import matplotlib
+            matplotlib.use('Agg')  # Backend no interactivo
+            import matplotlib.pyplot as plt
+            import numpy as np
+            from io import BytesIO
+            matplotlib_available = True
+        except ImportError:
+            elements.append(Paragraph("⚠️ Matplotlib no está disponible. Los gráficos no se incluirán en el PDF.", styleN))
+    else:
+        elements.append(Paragraph("⚠️ Matplotlib no está disponible. Los gráficos no se incluirán en el PDF.", styleN))
+    
+    # Gráfico de cortantes y momentos (si hay datos y matplotlib está disponible)
+    if matplotlib_available and MATPLOTLIB_AVAILABLE:
+        try:
+            from reportlab.platypus import Image as RLImage
+            # Usar los datos principales de la viga
+            L = float(datos_entrada.get('L_viga', 6.0))
+            w = float(datos_entrada.get('CM', 150)) + float(datos_entrada.get('CV', 200))
+            P = None
+            a = None
+            # Gráfico de cortantes y momentos
+            x, V, M = calcular_cortantes_momentos_viga_simple_mccormac(L, w, P, a)
+            fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(7, 5))
+            ax1.plot(x, V, 'r-', linewidth=2, label='Cortante (V)')
+            ax1.set_title('Diagrama de Cortantes')
+            ax1.set_xlabel('Distancia (m)')
+            ax1.set_ylabel('Cortante (kg)')
+            ax1.grid(True, alpha=0.3)
+            ax2.plot(x, M, 'b-', linewidth=2, label='Momento (M)')
+            ax2.set_title('Diagrama de Momentos')
+            ax2.set_xlabel('Distancia (m)')
+            ax2.set_ylabel('Momento (kg·m)')
+            ax2.grid(True, alpha=0.3)
+            plt.tight_layout()
+            cortante_momento_img = BytesIO()
+            fig.savefig(cortante_momento_img, format='png', bbox_inches='tight', dpi=200)
+            plt.close(fig)
+            cortante_momento_img.seek(0)
+            elements.append(Paragraph("Gráficos de Cortantes y Momentos para la Viga Principal", styleH2))
+            elements.append(RLImage(cortante_momento_img, width=400, height=280))
+            elements.append(Spacer(1, 10))
+        except Exception as e:
+            elements.append(Paragraph(f"No se pudo generar el gráfico de cortantes/momentos: {str(e)}", styleN))
+    
     # Gráfico de propiedades principales
-    try:
-        fig, ax = plt.subplots(figsize=(6, 4))
-        propiedades = ['Ec', 'Es', 'fr', 'β1']
-        valores = [resultados.get('Ec', 0)/1000, resultados.get('Es', 0)/1000000, resultados.get('fr', 0), resultados.get('beta1', 0)]
-        colors = ['#4169E1', '#DC143C', '#32CD32', '#FFD700']
-        bars = ax.bar(propiedades, valores, color=colors)
-        ax.set_title("Propiedades de los Materiales")
-        ax.set_ylabel("Valor")
-        for bar in bars:
-            height = bar.get_height()
-            ax.text(bar.get_x() + bar.get_width()/2., height + 0.1, f'{height:.2f}', ha='center', va='bottom')
-        plt.tight_layout()
-        props_img = BytesIO()
-        fig.savefig(props_img, format='png', bbox_inches='tight', dpi=200)
-        plt.close(fig)
-        props_img.seek(0)
-        elements.append(Paragraph("Gráfico de Propiedades Principales", styleH2))
-        elements.append(RLImage(props_img, width=320, height=220))
-        elements.append(Spacer(1, 10))
-    except Exception as e:
-        elements.append(Paragraph(f"No se pudo generar el gráfico de propiedades: {e}", styleN))
+    if matplotlib_available and MATPLOTLIB_AVAILABLE:
+        try:
+            from reportlab.platypus import Image as RLImage
+            fig, ax = plt.subplots(figsize=(6, 4))
+            propiedades = ['Ec', 'Es', 'fr', 'β1']
+            valores = [resultados.get('Ec', 0)/1000, resultados.get('Es', 0)/1000000, resultados.get('fr', 0), resultados.get('beta1', 0)]
+            colors = ['#4169E1', '#DC143C', '#32CD32', '#FFD700']
+            bars = ax.bar(propiedades, valores, color=colors)
+            ax.set_title("Propiedades de los Materiales")
+            ax.set_ylabel("Valor")
+            for bar in bars:
+                height = bar.get_height()
+                ax.text(bar.get_x() + bar.get_width()/2., height + 0.1, f'{height:.2f}', ha='center', va='bottom')
+            plt.tight_layout()
+            props_img = BytesIO()
+            fig.savefig(props_img, format='png', bbox_inches='tight', dpi=200)
+            plt.close(fig)
+            props_img.seek(0)
+            elements.append(Paragraph("Gráfico de Propiedades Principales", styleH2))
+            elements.append(RLImage(props_img, width=320, height=220))
+            elements.append(Spacer(1, 10))
+        except Exception as e:
+            elements.append(Paragraph(f"No se pudo generar el gráfico de propiedades: {str(e)}", styleN))
+    
     # Gráfico de zona sísmica (esquema simple)
-    try:
-        fig, ax = plt.subplots(figsize=(4, 2.5))
-        zonas = ['Z1', 'Z2', 'Z3', 'Z4']
-        valores = [0.10, 0.15, 0.25, 0.35]
-        color_map = ['#A9CCE3', '#5499C7', '#2471A3', '#1B2631']
-        ax.bar(zonas, valores, color=color_map)
-        zona_sel = datos_entrada.get('zona_sismica', 'Z3')
-        idx = zonas.index(zona_sel) if zona_sel in zonas else 2
-        ax.bar(zonas[idx], valores[idx], color='#F1C40F')
-        ax.set_title('Zona Sísmica Seleccionada')
-        ax.set_ylabel('Z')
-        plt.tight_layout()
-        zona_img = BytesIO()
-        fig.savefig(zona_img, format='png', bbox_inches='tight', dpi=200)
-        plt.close(fig)
-        zona_img.seek(0)
-        elements.append(Paragraph("Gráfico de Zona Sísmica", styleH2))
-        elements.append(RLImage(zona_img, width=200, height=120))
-        elements.append(Spacer(1, 10))
-    except Exception as e:
-        elements.append(Paragraph(f"No se pudo generar el gráfico de zona sísmica: {e}", styleN))
+    if matplotlib_available and MATPLOTLIB_AVAILABLE:
+        try:
+            from reportlab.platypus import Image as RLImage
+            fig, ax = plt.subplots(figsize=(4, 2.5))
+            zonas = ['Z1', 'Z2', 'Z3', 'Z4']
+            valores = [0.10, 0.15, 0.25, 0.35]
+            color_map = ['#A9CCE3', '#5499C7', '#2471A3', '#1B2631']
+            ax.bar(zonas, valores, color=color_map)
+            zona_sel = datos_entrada.get('zona_sismica', 'Z3')
+            idx = zonas.index(zona_sel) if zona_sel in zonas else 2
+            ax.bar(zonas[idx], valores[idx], color='#F1C40F')
+            ax.set_title('Zona Sísmica Seleccionada')
+            ax.set_ylabel('Z')
+            plt.tight_layout()
+            zona_img = BytesIO()
+            fig.savefig(zona_img, format='png', bbox_inches='tight', dpi=200)
+            plt.close(fig)
+            zona_img.seek(0)
+            elements.append(Paragraph("Gráfico de Zona Sísmica", styleH2))
+            elements.append(RLImage(zona_img, width=200, height=120))
+            elements.append(Spacer(1, 10))
+        except Exception as e:
+            elements.append(Paragraph(f"No se pudo generar el gráfico de zona sísmica: {str(e)}", styleN))
     # ... resto de la sección de resultados de diseño (tablas, etc.) ...
     # (Mantener el resto del código igual, solo insertar los gráficos antes de las tablas de resultados)
     # ...
@@ -1079,6 +1152,11 @@ st.set_page_config(
     page_icon="🏗️",
     layout="wide"
 )
+
+# Verificar dependencias y mostrar warnings
+warnings = verificar_dependencias()
+for warning in warnings:
+    st.warning(warning)
 
 # Header con fondo amarillo
 st.markdown("""
